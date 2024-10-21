@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+// needed later
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+//
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {Sun , Moon } from 'lucide-react' ;
 import Image from "next/image"
@@ -17,15 +19,16 @@ export default function NewsletterFormComponent() {
   const [formData, setFormData] = useState({})
   const [darkMode, setDarkMode] = useState(false); 
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e:any) => {
     const { name, value } = e.target
     setFormData((prevData) => ({ ...prevData, [name]: value }))
+
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e:any) => {
     e.preventDefault()
     console.log("Form submitted:", formData)
-    /// TODO : backend connection for submit btn 
+    /// TODO : backend connection for submit btn , need to integrate it wid supabase 
   }
 
   const toggleDarkMode = () => {
