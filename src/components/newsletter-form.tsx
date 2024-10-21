@@ -15,9 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {Sun , Moon } from 'lucide-react' ;
 import Image from "next/image"
 
-export default function NewsletterFormComponent() {
+interface NewsLetterProps{
+  darkMode : boolean ;
+  toggleDarkMode : ()=>void ; 
+}
+
+export default function NewsletterFormComponent({darkMode , toggleDarkMode}:NewsLetterProps) {
   const [formData, setFormData] = useState({})
-  const [darkMode, setDarkMode] = useState(false); 
 
   const handleInputChange = (e:any) => {
     const { name, value } = e.target
@@ -31,13 +35,8 @@ export default function NewsletterFormComponent() {
     /// TODO : backend connection for submit btn , need to integrate it wid supabase 
   }
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
-
   return (
-    <div className={darkMode ? "dark" :""}>
+    <div>
 
  <header className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
