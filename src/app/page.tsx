@@ -1,4 +1,6 @@
 "use client"
+require('dotenv').config();
+
 import { useState ,useEffect } from 'react';
 import NewsletterFormComponent from '../components/newsletter-form';
 
