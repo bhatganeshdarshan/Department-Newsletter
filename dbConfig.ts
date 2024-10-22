@@ -1,4 +1,4 @@
-require('dotenv').config(); // Ensure this is at the top of your file
+require('dotenv').config(); 
 
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "./database.types";
