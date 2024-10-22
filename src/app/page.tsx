@@ -7,11 +7,12 @@ import NewsletterFormComponent from '../components/newsletter-form'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sun, Moon } from 'lucide-react'
+import { User } from '@supabase/supabase-js'
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
 
   useEffect(() => {

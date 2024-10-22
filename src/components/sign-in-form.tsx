@@ -56,7 +56,7 @@ export default function SignIn() {
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
-          hd: 'bmsit.in,bmsit.ac.in', 
+          // hd: 'bmsit.in,bmsit.ac.in', 
         },
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
