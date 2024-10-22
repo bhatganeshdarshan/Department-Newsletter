@@ -30,34 +30,64 @@ import Image from "next/image";
 
 // supabse
 import { supabase } from "../../dbConfig";
+import { Database, TablesInsert } from "../../database.types";
 
 interface NewsLetterProps {
   darkMode: boolean;
   toggleDarkMode: () => void;
 }
 
+type NewsletterFormData = Database['public']['Tables']['newsletter_form']['Insert'];
+
 export default function NewsletterFormComponent({
   darkMode,
   toggleDarkMode,
 }: NewsLetterProps) {
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState<NewsletterFormData>({
+    tab_section: "mou",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleInputChange = (e: any) => {
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    /// TODO : backend connection for submit btn , need to integrate it wid supabase
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    setSuccess(false);
 
+    try {
+      const { data, error } = await supabase
+        .from("newsletter_form")
+        .insert([formData]);
+
+      if (error) throw error;
+      
+      console.log("Form submitted successfully:", data);
+      setSuccess(true);
+      setFormData({ tab_section: "mou" }); // Reset form
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setError("An error occurred while submitting the form. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  console.log(formData);
 
   return (
     <div>
-     
       <header className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
           {/* <img src="../app/college_logo.png" alt="College Icon" className="h-10 w-10" />  */}
@@ -113,8 +143,8 @@ export default function NewsletterFormComponent({
                   <div className="space-y-2">
                     <Label htmlFor="mou-org">MoUs signed with:</Label>
                     <Input
-                      id="mou-org"
-                      name="mou-org"
+                      id="mou_org"
+                      name="mou_org"
                       onChange={handleInputChange}
                       required
                     />
@@ -122,18 +152,18 @@ export default function NewsletterFormComponent({
                   <div className="space-y-2">
                     <Label htmlFor="mou-date">Date:</Label>
                     <Input
-                      id="mou-date"
-                      name="mou-date"
+                      id="mou_date"
+                      name="mou_date"
                       type="date"
                       onChange={handleInputChange}
                       required
-                    />
+                    /> 
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="faculty-name">Coordinated by:</Label>
                     <Input
-                      id="faculty-name"
-                      name="faculty-name"
+                      id="faculty_name"
+                      name="faculty_name"
                       onChange={handleInputChange}
                       required
                     />
@@ -158,42 +188,42 @@ export default function NewsletterFormComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="session-chair">Session Chair:</Label>
+                  <Label htmlFor="session_chair">Session Chair:</Label>
                   <Input
-                    id="session-chair"
-                    name="session-chair"
+                    id="session_chair"
+                    name="session_chair"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="boe-bos">BOE/BOS Member:</Label>
+                  <Label htmlFor="boe_bos_member">BOE/BOS Member:</Label>
                   <Input
-                    id="boe-bos"
-                    name="boe-bos"
+                    id="boe_bos_member"
+                    name="boe_bos_member"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="best-paper">Best Paper Award:</Label>
+                  <Label htmlFor="best_paper_award">Best Paper Award:</Label>
                   <Textarea
-                    id="best-paper"
-                    name="best-paper"
+                    id="best_paper_award"
+                    name="best_paper_award"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="award-received">Award Received:</Label>
+                  <Label htmlFor="award_received">Award Received:</Label>
                   <Textarea
-                    id="award-received"
-                    name="award-received"
+                    id="award_received"
+                    name="award_received"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="photos">Attach relevant photographs:</Label>
+                  <Label htmlFor="attached_photos">Attach relevant photographs:</Label>
                   <Input
-                    id="photos"
-                    name="photos"
+                    id="attached_photos"
+                    name="attached_photos"
                     type="file"
                     multiple
                     onChange={handleInputChange}
@@ -214,51 +244,51 @@ export default function NewsletterFormComponent({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="industrial-visit-department">
+                    <Label htmlFor="industrial_visit_department">
                       Department:
                     </Label>
                     <Input
-                      id="industrial-visit-department"
-                      name="industrial-visit-department"
+                      id="industrial_visit_department"
+                      name="industrial_visit_department"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="industrial-visit-semester">Semester:</Label>
+                    <Label htmlFor="industrial_visit_semester">Semester:</Label>
                     <Input
-                      id="industrial-visit-semester"
-                      name="industrial-visit-semester"
+                      id="industrial_visit_semester"
+                      name="industrial_visit_semester"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="industrial-visit-place">Place:</Label>
+                    <Label htmlFor="industrial_visit_place">Place:</Label>
                     <Input
-                      id="industrial-visit-place"
-                      name="industrial-visit-place"
+                      id="industrial_visit_place"
+                      name="industrial_visit_place"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="industrial-visit-date">Date:</Label>
+                    <Label htmlFor="industrial_visit_date">Date:</Label>
                     <Input
-                      id="industrial-visit-date"
-                      name="industrial-visit-date"
+                      id="industrial_visit_date"
+                      name="industrial_visit_date"
                       type="date"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="industrial-visit-students">
+                    <Label htmlFor="industrial_visit_students">
                       Number of students:
                     </Label>
                     <Input
-                      id="industrial-visit-students"
-                      name="industrial-visit-students"
+                      id="industrial_visit_students"
+                      name="industrial_visit_students"
                       type="number"
                       onChange={handleInputChange}
                       required
@@ -266,22 +296,22 @@ export default function NewsletterFormComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="faculty-internship">
+                  <Label htmlFor="faculty_internship">
                     Faculty Internship:
                   </Label>
                   <Textarea
-                    id="faculty-internship"
-                    name="faculty-internship"
+                    id="faculty_internship"
+                    name="faculty_internship"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="student-internship">
+                  <Label htmlFor="student_internship">
                     Student Internship:
                   </Label>
                   <Textarea
-                    id="student-internship"
-                    name="student-internship"
+                    id="student_internship"
+                    name="student_internship"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -302,29 +332,29 @@ export default function NewsletterFormComponent({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="workshop-name">Workshop Name:</Label>
+                    <Label htmlFor="workshop_name">Workshop Name:</Label>
                     <Input
-                      id="workshop-name"
-                      name="workshop-name"
+                      id="workshop_name"
+                      name="workshop_name"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="workshop-start-date">Start Date:</Label>
+                    <Label htmlFor="workshop_start_date">Start Date:</Label>
                     <Input
-                      id="workshop-start-date"
-                      name="workshop-start-date"
+                      id="workshop_start_date"
+                      name="workshop_start_date"
                       type="date"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="workshop-end-date">End Date:</Label>
+                    <Label htmlFor="workshop_end_date">End Date:</Label>
                     <Input
-                      id="workshop-end-date"
-                      name="workshop-end-date"
+                      id="workshop_end_date"
+                      name="workshop_end_date"
                       type="date"
                       onChange={handleInputChange}
                       required
@@ -332,20 +362,20 @@ export default function NewsletterFormComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fdp-details">
+                  <Label htmlFor="fdp_details">
                     Faculty Development Programme:
                   </Label>
                   <Textarea
-                    id="fdp-details"
-                    name="fdp-details"
+                    id="fdp_details"
+                    name="fdp_details"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tech-fest">Technical Fest:</Label>
+                  <Label htmlFor="tech_fest">Technical Fest:</Label>
                   <Textarea
-                    id="tech-fest"
-                    name="tech-fest"
+                    id="tech_fest"
+                    name="tech_fest"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -366,20 +396,20 @@ export default function NewsletterFormComponent({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="expert-talk">Expert Talk Organized:</Label>
+                  <Label htmlFor="expert_talk">Expert Talk Organized:</Label>
                   <Textarea
-                    id="expert-talk"
-                    name="expert-talk"
+                    id="expert_talk"
+                    name="expert_talk"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="alumni-interaction">
+                  <Label htmlFor="alumni_interaction">
                     Alumni Interaction:
                   </Label>
                   <Textarea
-                    id="alumni-interaction"
-                    name="alumni-interaction"
+                    id="alumni_interaction"
+                    name="alumni_interaction"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -398,38 +428,38 @@ export default function NewsletterFormComponent({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="research-title">Research Title:</Label>
+                    <Label htmlFor="research_title">Research Title:</Label>
                     <Input
-                      id="research-title"
-                      name="research-title"
+                      id="research_title"
+                      name="research_title"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="research-organization">Organization:</Label>
+                    <Label htmlFor="research_organization">Organization:</Label>
                     <Input
-                      id="research-organization"
-                      name="research-organization"
+                      id="research_organization"
+                      name="research_organization"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="research-date">Date:</Label>
+                    <Label htmlFor="research_date">Date:</Label>
                     <Input
-                      id="research-date"
-                      name="research-date"
+                      id="research_date"
+                      name="research_date"
                       type="date"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="research-cost">Total Cost:</Label>
+                    <Label htmlFor="research_cost">Total Cost:</Label>
                     <Input
-                      id="research-cost"
-                      name="research-cost"
+                      id="research_cost"
+                      name="research_cost"
                       type="number"
                       onChange={handleInputChange}
                       required
@@ -437,32 +467,32 @@ export default function NewsletterFormComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="research-proposals-submitted">
+                  <Label htmlFor="research_proposals_submitted">
                     Research Proposals Submitted:
                   </Label>
                   <Textarea
-                    id="research-proposals-submitted"
-                    name="research-proposals-submitted"
+                    id="research_proposals_submitted"
+                    name="research_proposals_submitted"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="research-proposals-granted">
+                  <Label htmlFor="research_proposals_granted">
                     Research Proposals Granted:
                   </Label>
                   <Textarea
-                    id="research-proposals-granted"
-                    name="research-proposals-granted"
+                    id="research_proposals_granted"
+                    name="research_proposals_granted"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="research-centre-activities">
+                  <Label htmlFor="research_centre_activities">
                     Research Centre Activities:
                   </Label>
                   <Textarea
-                    id="research-centre-activities"
-                    name="research-centre-activities"
+                    id="research_centre_activities"
+                    name="research_centre_activities"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -481,66 +511,66 @@ export default function NewsletterFormComponent({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="conference-published">
+                    <Label htmlFor="conference_published">
                       Conference Papers Published:
                     </Label>
                     <Input
-                      id="conference-published"
-                      name="conference-published"
+                      id="conference_published"
+                      name="conference_published"
                       type="number"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="journal-published">
+                    <Label htmlFor="journal_published">
                       Journal Papers Published:
                     </Label>
                     <Input
-                      id="journal-published"
-                      name="journal-published"
+                      id="journal_published"
+                      name="journal_published"
                       type="number"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="books-published">Books Published:</Label>
+                    <Label htmlFor="books_published">Books Published:</Label>
                     <Input
-                      id="books-published"
-                      name="books-published"
+                      id="books_published"
+                      name="books_published"
                       type="number"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fdps-attended">FDPs/STTP Attended:</Label>
+                    <Label htmlFor="fdps_attended">FDPs/STTP Attended:</Label>
                     <Input
-                      id="fdps-attended"
-                      name="fdps-attended"
+                      id="fdps_attended"
+                      name="fdps_attended"
                       type="number"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="moocs-completed">MooCs Completed:</Label>
+                    <Label htmlFor="moocs_completed">MooCs Completed:</Label>
                     <Input
-                      id="moocs-completed"
-                      name="moocs-completed"
+                      id="moocs_completed"
+                      name="moocs_completed"
                       type="number"
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nptel-completed">
+                    <Label htmlFor="nptel_completed">
                       NPTEL Courses Completed:
                     </Label>
                     <Input
-                      id="nptel-completed"
-                      name="nptel-completed"
+                      id="nptel_completed"
+                      name="nptel_completed"
                       type="number"
                       onChange={handleInputChange}
                       required
@@ -548,22 +578,22 @@ export default function NewsletterFormComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="other-initiatives">
+                  <Label htmlFor="other_initiatives">
                     Other Initiatives by the Department:
                   </Label>
                   <Textarea
-                    id="other-initiatives"
-                    name="other-initiatives"
+                    id="other_initiatives"
+                    name="other_initiatives"
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="student-achievements">
+                  <Label htmlFor="student_achievements">
                     Student Achievements:
                   </Label>
                   <Textarea
-                    id="student-achievements"
-                    name="student-achievements"
+                    id="student_achievements"
+                    name="student_achievements"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -573,7 +603,7 @@ export default function NewsletterFormComponent({
         </Tabs>
 
         <div className="flex justify-end">
-          <Button type="submit">Submit Newsletter Content</Button>
+          <Button type="submit" onClick={handleSubmit}>Submit Newsletter Content</Button>
         </div>
       </form>
     </div>
