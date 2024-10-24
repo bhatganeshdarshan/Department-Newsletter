@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sun, Moon } from 'lucide-react'
 import { User } from '@supabase/supabase-js'
+import NewsletterAdmin from './admin/page'
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(true)
@@ -65,7 +66,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return null // This will prevent any flash of content before redirecting
+    return null 
   }
 
   return (
@@ -82,6 +83,7 @@ export default function Home() {
           </Button>
         </div>
         <NewsletterFormComponent darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+        {/* <NewsletterAdmin/> */} {/* Uncomment this and comment  above line to try/test admin panel  */}
       </div>
     </div>
   )
