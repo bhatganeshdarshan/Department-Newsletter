@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Lock } from 'lucide-react';
 import Image from "next/image";
 
 import { supabase } from "../../dbConfig";
 import { Database } from "../../database.types";
+import { useRouter } from "next/navigation";
 
 interface NewsLetterProps {
   darkMode: boolean;
@@ -49,6 +50,10 @@ export default function NewsletterFormComponent({
     } else {
       setFormData((prevData) => ({ ...prevData, [name]: value }));
     }
+  };
+  const router = useRouter() ; 
+  const navigateToAdmin = () => {
+    router.push('/admin');
   };
 
   const uploadFile = async (file: File) => {
@@ -126,16 +131,12 @@ export default function NewsletterFormComponent({
         </div>
 
         <Button
-          onClick={toggleDarkMode}
-          className="flex items-center space-x-2 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-full"
-        >
-          {darkMode ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-          <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
-        </Button>
+        onClick = {navigateToAdmin}
+        className="flex items-center space-x-2 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-full"
+      >
+        <Lock />
+        <span>Admin Panel</span>
+      </Button>
       </header>
 
       <form onSubmit={handleSubmit} className="container mx-auto p-4 space-y-8">
