@@ -30,7 +30,7 @@ export default function NewsletterFormComponent({
   darkMode,
   toggleDarkMode,
 }: NewsLetterProps) {
-  const [formData, setFormData] = useState<NewsletterFormData>({
+  const [formData, setFormData] = useState<Partial<NewsletterFormData>>({
     tab_section: "mou",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +60,7 @@ export default function NewsletterFormComponent({
 
     if (error) {
       console.error("Error uploading file:", error);
+      //console.error("Error details:", error.message, error.status);
       throw error;
     }
     return data.path;
@@ -74,20 +75,22 @@ export default function NewsletterFormComponent({
 
     try {
       // Handle file uploads first
-      const filesToUpload = formData.attached_photos as unknown as FileList;
+      const filesToUpload = formData.attached_photos as FileList | undefined;
       if (filesToUpload) {
         const uploadPromises = Array.from(filesToUpload).map(uploadFile);
         const uploadedPaths = await Promise.all(uploadPromises);
         setUploadedFiles(uploadedPaths);
       }
 
-      const formDataToSubmit: Partial<NewsletterFormData> = { ...formData };
-      delete formDataToSubmit.attached_photos; 
-      formDataToSubmit.attached_photos = uploadedFiles; // Add uploaded file paths
+      // Prepare form data for submission
+      const formDataToSubmit: NewsletterFormData = {
+        ...formData,
+        tab_section: formData.tab_section || "mou", // Ensure tab_section is always a string
+        attached_photos: uploadedFiles,
+      } as NewsletterFormData;
 
-      if (!formDataToSubmit.tab_section) {
-        formDataToSubmit.tab_section = "mou";
-      }
+      // Remove file input from form data
+      delete (formDataToSubmit as any).attached_photos_input;
 
       // Submit form data
       const { data, error } = await supabase
