@@ -5,32 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-// needed later
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-//
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon } from 'lucide-react';
 import Image from "next/image";
 
-// supabse
 import { supabase } from "../../dbConfig";
-import { Database, TablesInsert } from "../../database.types";
+import { Database } from "../../database.types";
 
 interface NewsLetterProps {
   darkMode: boolean;
@@ -49,15 +36,33 @@ export default function NewsletterFormComponent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    const { name, value, type } = e.target;
+    if (type === 'file') {
+      const fileInput = e.target as HTMLInputElement;
+      const files = fileInput.files;
+      if (files && files.length > 0) {
+        setFormData((prevData) => ({ ...prevData, [name]: files }));
+      }
+    } else {
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+    }
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+  const uploadFile = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const { data, error } = await supabase.storage
+      .from('newsletter-photos')
+      .upload(fileName, file);
+
+    if (error) {
+      console.error("Error uploading file:", error);
+      throw error;
+    }
+    return data.path;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,11 +70,29 @@ export default function NewsletterFormComponent({
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
+    setUploadedFiles([]);
 
     try {
+      // Handle file uploads first
+      const filesToUpload = formData.attached_photos as unknown as FileList;
+      if (filesToUpload) {
+        const uploadPromises = Array.from(filesToUpload).map(uploadFile);
+        const uploadedPaths = await Promise.all(uploadPromises);
+        setUploadedFiles(uploadedPaths);
+      }
+
+      const formDataToSubmit: Partial<NewsletterFormData> = { ...formData };
+      delete formDataToSubmit.attached_photos; 
+      formDataToSubmit.attached_photos = uploadedFiles; // Add uploaded file paths
+
+      if (!formDataToSubmit.tab_section) {
+        formDataToSubmit.tab_section = "mou";
+      }
+
+      // Submit form data
       const { data, error } = await supabase
         .from("newsletter_form")
-        .insert([formData]);
+        .insert(formDataToSubmit);
 
       if (error) throw error;
       
@@ -84,13 +107,10 @@ export default function NewsletterFormComponent({
     }
   };
 
-  console.log(formData);
-
   return (
     <div>
       <header className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
-          {/* <img src="../app/college_logo.png" alt="College Icon" className="h-10 w-10" />  */}
           <Image
             src="/images/college_logo.png"
             alt="college icon"
@@ -226,6 +246,7 @@ export default function NewsletterFormComponent({
                     name="attached_photos"
                     type="file"
                     multiple
+                    accept="image/*"
                     onChange={handleInputChange}
                   />
                 </div>
@@ -603,9 +624,14 @@ export default function NewsletterFormComponent({
         </Tabs>
 
         <div className="flex justify-end">
-          <Button type="submit" onClick={handleSubmit}>Submit Newsletter Content</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Newsletter Content'}
+          </Button>
         </div>
+        {error && <p className="text-red-500 mt-4">{error}</p>}
+        {success && <p className="text-green-500 mt-4">Form submitted successfully!</p>}
       </form>
     </div>
   );
 }
+
