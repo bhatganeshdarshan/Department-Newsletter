@@ -11,7 +11,7 @@ import { User } from '@supabase/supabase-js'
 import NewsletterAdmin from './admin/page'
 
 export default function Home() {
-  const [darkMode, setDarkMode] = useState(true)
+  const [darkMode, setDarkMode] = useState(false)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
   const router = useRouter()

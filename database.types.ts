@@ -36,6 +36,7 @@ export type Database = {
     Tables: {
       newsletter_form: {
         Row: {
+          // Existing fields
           alumni_interaction: string | null
           attached_photos: string[] | null
           award_received: string | null
@@ -62,6 +63,7 @@ export type Database = {
           mou_org: string | null
           nptel_completed: number | null
           other_initiatives: string | null
+          research_center_activities: string | null 
           research_center_activity_date: string | null
           research_center_activity_name: string | null
           research_center_details: string | null
@@ -80,8 +82,86 @@ export type Database = {
           workshop_end_date: string | null
           workshop_name: string | null
           workshop_start_date: string | null
+
+          // New Fields – MoU / Awards / Recognitions
+          resource_event_name: string | null
+          resource_date: string | null
+          resource_institution: string | null
+          resource_topic: string | null
+          award_research_title: string | null
+          award_conference_journal: string | null
+          award_name: string | null
+          award_given_by: string | null
+          outreach_activity_name: string | null
+          outreach_place: string | null
+          outreach_date: string | null
+          collaborative_research_partner: string | null
+          collaborative_research_description: string | null
+
+          // New Fields – Industry – Institute Interaction
+          industrial_visit_faculty_coordinators: string | null
+          faculty_internship_company: string | null
+          faculty_internship_start_date: string | null
+          faculty_internship_end_date: string | null
+          faculty_internship_description: string | null
+          student_internship_name: string | null
+          student_internship_company: string | null
+          student_internship_start_date: string | null
+          student_internship_end_date: string | null
+
+          // New Fields – Workshops / FDPs / Fests
+          workshop_participants: number | null
+          workshop_resource_person: string | null
+          fdp_duration: string | null
+          fdp_resource_person: string | null
+          fdp_institution: string | null
+          tech_fest_event_name: string | null
+          tech_fest_date: string | null
+          tech_fest_participating_colleges: number | null
+
+          // New Fields – Seminars / Expert Talks / Alumni Interaction
+          expert_talk_topic: string | null
+          expert_talk_speaker_name: string | null
+          expert_talk_speaker_affiliation: string | null
+          expert_talk_audience: number | null
+          expert_talk_date: string | null
+          alumni_name: string | null
+          alumni_graduation_year: number | null
+          alumni_company: string | null
+          alumni_topic: string | null
+
+          // New Fields – Research Work
+          research_funding_organization: string | null
+          research_approval_date: string | null
+          research_collaborative_partner: string | null
+          research_collaboration_duration: string | null
+          research_collaboration_outcomes: string | null
+
+          // New Fields – Summary Sheet
+          faculty_books_chapters: number | null
+          faculty_collaborative_research: number | null
+          faculty_expert_talks: number | null
+          faculty_alumni_talks: number | null
+          faculty_industrial_visits: number | null
+          faculty_mous_operational: number | null
+          faculty_consultancy_completed: number | null
+          faculty_edp_completed: number | null
+          faculty_talks_delivered: number | null
+          student_conference_papers: number | null
+          student_journal_papers: number | null
+          student_conferences_attended: number | null
+          student_hackathons: number | null
+          student_moocs_completed: number | null
+          student_nptel_completed: number | null
+          student_aicte_participation: number | null
+          sports_events_count: number | null
+          placement_companies: number | null
+          placement_ctc: string | null
+          hec_events_count: number | null
+          ncc_bicep_events_count: number | null
         }
         Insert: {
+          // Existing fields (all optional except tab_section)
           alumni_interaction?: string | null
           attached_photos?: string[] | null
           award_received?: string | null
@@ -108,6 +188,7 @@ export type Database = {
           mou_org?: string | null
           nptel_completed?: number | null
           other_initiatives?: string | null
+          research_center_activities?: string | null
           research_center_activity_date?: string | null
           research_center_activity_name?: string | null
           research_center_details?: string | null
@@ -126,8 +207,86 @@ export type Database = {
           workshop_end_date?: string | null
           workshop_name?: string | null
           workshop_start_date?: string | null
+
+          // New Fields – MoU / Awards / Recognitions
+          resource_event_name?: string | null
+          resource_date?: string | null
+          resource_institution?: string | null
+          resource_topic?: string | null
+          award_research_title?: string | null
+          award_conference_journal?: string | null
+          award_name?: string | null
+          award_given_by?: string | null
+          outreach_activity_name?: string | null
+          outreach_place?: string | null
+          outreach_date?: string | null
+          collaborative_research_partner?: string | null
+          collaborative_research_description?: string | null
+
+          // New Fields – Industry – Institute Interaction
+          industrial_visit_faculty_coordinators?: string | null
+          faculty_internship_company?: string | null
+          faculty_internship_start_date?: string | null
+          faculty_internship_end_date?: string | null
+          faculty_internship_description?: string | null
+          student_internship_name?: string | null
+          student_internship_company?: string | null
+          student_internship_start_date?: string | null
+          student_internship_end_date?: string | null
+
+          // New Fields – Workshops / FDPs / Fests
+          workshop_participants?: number | null
+          workshop_resource_person?: string | null
+          fdp_duration?: string | null
+          fdp_resource_person?: string | null
+          fdp_institution?: string | null
+          tech_fest_event_name?: string | null
+          tech_fest_date?: string | null
+          tech_fest_participating_colleges?: number | null
+
+          // New Fields – Seminars / Expert Talks / Alumni Interaction
+          expert_talk_topic?: string | null
+          expert_talk_speaker_name?: string | null
+          expert_talk_speaker_affiliation?: string | null
+          expert_talk_audience?: number | null
+          expert_talk_date?: string | null
+          alumni_name?: string | null
+          alumni_graduation_year?: number | null
+          alumni_company?: string | null
+          alumni_topic?: string | null
+
+          // New Fields – Research Work
+          research_funding_organization?: string | null
+          research_approval_date?: string | null
+          research_collaborative_partner?: string | null
+          research_collaboration_duration?: string | null
+          research_collaboration_outcomes?: string | null
+
+          // New Fields – Summary Sheet
+          faculty_books_chapters?: number | null
+          faculty_collaborative_research?: number | null
+          faculty_expert_talks?: number | null
+          faculty_alumni_talks?: number | null
+          faculty_industrial_visits?: number | null
+          faculty_mous_operational?: number | null
+          faculty_consultancy_completed?: number | null
+          faculty_edp_completed?: number | null
+          faculty_talks_delivered?: number | null
+          student_conference_papers?: number | null
+          student_journal_papers?: number | null
+          student_conferences_attended?: number | null
+          student_hackathons?: number | null
+          student_moocs_completed?: number | null
+          student_nptel_completed?: number | null
+          student_aicte_participation?: number | null
+          sports_events_count?: number | null
+          placement_companies?: number | null
+          placement_ctc?: string | null
+          hec_events_count?: number | null
+          ncc_bicep_events_count?: number | null
         }
         Update: {
+          // Existing fields (all optional)
           alumni_interaction?: string | null
           attached_photos?: string[] | null
           award_received?: string | null
@@ -156,6 +315,7 @@ export type Database = {
           other_initiatives?: string | null
           research_center_activity_date?: string | null
           research_center_activity_name?: string | null
+          research_center_activities?: string | null
           research_center_details?: string | null
           research_center_participants?: number | null
           research_cost?: number | null
@@ -172,6 +332,83 @@ export type Database = {
           workshop_end_date?: string | null
           workshop_name?: string | null
           workshop_start_date?: string | null
+
+          // New Fields – MoU / Awards / Recognitions
+          resource_event_name?: string | null
+          resource_date?: string | null
+          resource_institution?: string | null
+          resource_topic?: string | null
+          award_research_title?: string | null
+          award_conference_journal?: string | null
+          award_name?: string | null
+          award_given_by?: string | null
+          outreach_activity_name?: string | null
+          outreach_place?: string | null
+          outreach_date?: string | null
+          collaborative_research_partner?: string | null
+          collaborative_research_description?: string | null
+
+          // New Fields – Industry – Institute Interaction
+          industrial_visit_faculty_coordinators?: string | null
+          faculty_internship_company?: string | null
+          faculty_internship_start_date?: string | null
+          faculty_internship_end_date?: string | null
+          faculty_internship_description?: string | null
+          student_internship_name?: string | null
+          student_internship_company?: string | null
+          student_internship_start_date?: string | null
+          student_internship_end_date?: string | null
+
+          // New Fields – Workshops / FDPs / Fests
+          workshop_participants?: number | null
+          workshop_resource_person?: string | null
+          fdp_duration?: string | null
+          fdp_resource_person?: string | null
+          fdp_institution?: string | null
+          tech_fest_event_name?: string | null
+          tech_fest_date?: string | null
+          tech_fest_participating_colleges?: number | null
+
+          // New Fields – Seminars / Expert Talks / Alumni Interaction
+          expert_talk_topic?: string | null
+          expert_talk_speaker_name?: string | null
+          expert_talk_speaker_affiliation?: string | null
+          expert_talk_audience?: number | null
+          expert_talk_date?: string | null
+          alumni_name?: string | null
+          alumni_graduation_year?: number | null
+          alumni_company?: string | null
+          alumni_topic?: string | null
+
+          // New Fields – Research Work
+          research_funding_organization?: string | null
+          research_approval_date?: string | null
+          research_collaborative_partner?: string | null
+          research_collaboration_duration?: string | null
+          research_collaboration_outcomes?: string | null
+
+          // New Fields – Summary Sheet
+          faculty_books_chapters?: number | null
+          faculty_collaborative_research?: number | null
+          faculty_expert_talks?: number | null
+          faculty_alumni_talks?: number | null
+          faculty_industrial_visits?: number | null
+          faculty_mous_operational?: number | null
+          faculty_consultancy_completed?: number | null
+          faculty_edp_completed?: number | null
+          faculty_talks_delivered?: number | null
+          student_conference_papers?: number | null
+          student_journal_papers?: number | null
+          student_conferences_attended?: number | null
+          student_hackathons?: number | null
+          student_moocs_completed?: number | null
+          student_nptel_completed?: number | null
+          student_aicte_participation?: number | null
+          sports_events_count?: number | null
+          placement_companies?: number | null
+          placement_ctc?: string | null
+          hec_events_count?: number | null
+          ncc_bicep_events_count?: number | null
         }
         Relationships: []
       }
@@ -190,6 +427,8 @@ export type Database = {
     }
   }
 }
+  
+// The following helper types remain unchanged:
 
 type PublicSchema = Database[Extract<keyof Database, "public">]
 
