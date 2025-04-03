@@ -72,7 +72,7 @@ export default function Home() {
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-end mb-4">
+        {/* <div className="flex justify-end mb-4">
           <Button
             variant="ghost"
             size="icon"
@@ -81,8 +81,8 @@ export default function Home() {
           >
             {darkMode ? <Sun className="h-[1.2rem] w-[1.2rem]" /> : <Moon className="h-[1.2rem] w-[1.2rem]" />}
           </Button>
-        </div>
-        <NewsletterFormComponent darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+        </div> */}
+        <NewsletterFormComponent />
         {/* <NewsletterAdmin/> */} {/* Uncomment this and comment  above line to try/test admin panel  */}
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -35,7 +36,10 @@ interface SupabaseSelectResponse<T> {
 type NewsletterRow = any;
 
 // List of Admin email addresses allowed
-const ALLOWED_ADMIN_EMAILS = ["bhatganeshdarshan10@gmail.com" , "rajeshaiml@bmsit.in"];
+const ALLOWED_ADMIN_EMAILS = [
+  "bhatganeshdarshan10@gmail.com",
+  "rajeshaiml@bmsit.in",
+];
 
 // S3 endpoint for photos
 const S3_ENDPOINT =
@@ -74,8 +78,10 @@ const mainColumns = [
 
 // Extra fields displayed in "Expand Details"
 const extraFields = [
+  // Original "extra" fields
   { label: "Session Chair", key: "session_chair" },
   { label: "BOE/BOS Member", key: "boe_bos_member" },
+
   { label: "Faculty Internship Company", key: "faculty_internship_company" },
   { label: "Faculty Internship Start Date", key: "faculty_internship_start_date" },
   { label: "Faculty Internship End Date", key: "faculty_internship_end_date" },
@@ -122,9 +128,162 @@ const extraFields = [
   { label: "Placement CTC", key: "placement_ctc" },
   { label: "HEC Events Count", key: "hec_events_count" },
   { label: "NCC/BICEP Events Count", key: "ncc_bicep_events_count" },
+
+  // ─────────────────────────────────────────
+  // Newly introduced fields from final form
+  // (Faculty as Resource Person)
+  { label: "Resource Faculty Name", key: "resource_faculty_name" },
+  { label: "Resource Faculty Designation", key: "resource_faculty_designation" },
+  { label: "Resource Faculty Department", key: "resource_faculty_department" },
+  { label: "Resource Activity Name", key: "resource_activity_name" },
+  { label: "Resource Place", key: "resource_place" },
+  { label: "Resource Date (New)", key: "resource_date_new" },
+  { label: "Resource Photos", key: "resource_photos" },
+
+  // (Faculty Awards - Paper Work)
+  { label: "FA Paper Title", key: "fa_paper_title" },
+  { label: "FA Author Names", key: "fa_author_names" },
+  { label: "FA International Journal Name", key: "fa_international_journal_name" },
+  { label: "FA International Conf Name", key: "fa_international_conf_name" },
+  { label: "FA Conference Name", key: "fa_conference_name" },
+  { label: "FA Book Chapter Title", key: "fa_book_chapter_title" },
+  { label: "FA Publisher Name", key: "fa_publisher_name" },
+  { label: "FA Editor Names", key: "fa_editor_names" },
+  { label: "FA DOI", key: "fa_doi" },
+  { label: "FA Volume", key: "fa_volume" },
+  { label: "FA Publication Name", key: "fa_publication_name" },
+  { label: "FA Publication Date", key: "fa_publication_date" },
+  { label: "FA Presentation Date", key: "fa_presentation_date" },
+  { label: "FA Certificates", key: "fa_certificates" },
+  { label: "FA Award Name", key: "fa_award_name" },
+  { label: "FA Awarded By", key: "fa_awarded_by" },
+  { label: "FA Location", key: "fa_location" },
+  { label: "FA Mode", key: "fa_mode" },
+  { label: "FA Pub Type", key: "fa_pub_type" },
+
+  // (MoU Collaborative Research)
+  { label: "Collab Faculty Name", key: "collab_faculty_name" },
+  { label: "Collab Faculty Designation", key: "collab_faculty_designation" },
+  { label: "Collab Faculty Department", key: "collab_faculty_department" },
+  { label: "Collab Place", key: "collab_place" },
+  { label: "Collab Date", key: "collab_date" },
+  { label: "Collab Photos", key: "collab_photos" },
+
+  // (Faculty Internship new fields)
+  { label: "FI Faculty Name", key: "fi_faculty_name" },
+  { label: "FI Faculty Designation", key: "fi_faculty_designation" },
+  { label: "FI Faculty Department", key: "fi_faculty_department" },
+  { label: "FI Place", key: "fi_place" },
+  { label: "FI Photos", key: "fi_photos" },
+
+  // (Student Internship new fields)
+  { label: "SI Student Name (New)", key: "si_student_name_new" },
+  { label: "SI Student Designation", key: "si_student_designation" },
+  { label: "SI Student Department", key: "si_student_department" },
+  { label: "SI Place", key: "si_place" },
+  { label: "SI Photos", key: "si_photos" },
+
+  // (Workshops new fields)
+  { label: "WS Faculty Coordinator Name", key: "ws_faculty_coordinator_name" },
+  { label: "WS Faculty Coordinator Designation", key: "ws_faculty_coordinator_designation" },
+  { label: "WS Department", key: "ws_department" },
+  { label: "WS Place", key: "ws_place" },
+  { label: "WS Photos", key: "ws_photos" },
+  { label: "WS Description", key: "ws_description" },
+
+  // (FDP new fields)
+  { label: "FDP Faculty Coordinator Name", key: "fdp_faculty_coordinator_name" },
+  { label: "FDP Coordinator Designation", key: "fdp_faculty_coordinator_designation" },
+  { label: "FDP Department", key: "fdp_department" },
+  { label: "FDP Place", key: "fdp_place" },
+  { label: "FDP Date", key: "fdp_date" },
+  { label: "FDP Photos", key: "fdp_photos" },
+  { label: "FDP Description", key: "fdp_description" },
+
+  // (Technical Fest new fields)
+  { label: "TF Faculty Coordinator Name", key: "tf_faculty_coordinator_name" },
+  { label: "TF Coordinator Designation", key: "tf_faculty_coordinator_designation" },
+  { label: "TF Department", key: "tf_department" },
+  { label: "TF Place", key: "tf_place" },
+  { label: "TF Date", key: "tf_date" },
+  { label: "TF Photos", key: "tf_photos" },
+  { label: "TF Description", key: "tf_description" },
+
+  // (Expert Talk new fields)
+  { label: "ET Department (New)", key: "et_department_new" },
+  { label: "ET Faculty Coord Name", key: "et_faculty_coordinator_name" },
+  { label: "ET Faculty Coord Designation", key: "et_faculty_coordinator_designation" },
+  { label: "ET Dep 2", key: "et_dep_2" },
+  { label: "ET Place", key: "et_place" },
+  { label: "ET Date (New)", key: "et_date_new" },
+  { label: "ET Photos", key: "et_photos" },
+  { label: "ET Description", key: "et_description" },
+
+  // (Alumni Interaction new fields)
+  { label: "Alumni Photo", key: "alumni_photo" },
+  { label: "Alumni Dept (New)", key: "alumni_department_new" },
+  { label: "Alumni Date (New)", key: "alumni_date_new" },
+
+  // (Research Work new fields)
+  { label: "RW Faculty Name", key: "rw_faculty_name" },
+  { label: "RW Faculty Designation", key: "rw_faculty_designation" },
+  { label: "RW Faculty Department", key: "rw_faculty_department" },
+  { label: "RW Organization", key: "rw_organization" },
+  { label: "RW Title of Project", key: "rw_title_of_project" },
+  { label: "RW Place", key: "rw_place" },
+  { label: "RW Photos", key: "rw_photos" },
+  // { label: "RW Total Cost", key: "rw_total_cost" }, // If used in your final code
+
+  // (Publications – Faculty)
+  { label: "Fpub Paper Title", key: "fpub_paper_title" },
+  { label: "Fpub Author Names", key: "fpub_author_names" },
+  { label: "Fpub Intl Journal Name", key: "fpub_international_journal_name" },
+  { label: "Fpub Intl Conf Name", key: "fpub_int_conf_name" },
+  { label: "Fpub National Conf", key: "fpub_national_conf" },
+  { label: "Fpub Conference Name", key: "fpub_conference_name" },
+  { label: "Fpub Book Chapter Title", key: "fpub_book_chapter_title" },
+  { label: "Fpub Publisher Name", key: "fpub_publisher_name" },
+  { label: "Fpub Editor Names", key: "fpub_editor_names" },
+  { label: "Fpub DOI", key: "fpub_doi" },
+  { label: "Fpub Volume/ISSN/Impact", key: "fpub_volume_issn_impact" },
+  { label: "Fpub Volume of Publication", key: "fpub_volume_of_publication" },
+  { label: "Fpub Publication Name", key: "fpub_publication_name" },
+  { label: "Fpub Publication Date", key: "fpub_publication_date" },
+  { label: "Fpub Presentation Date", key: "fpub_presentation_date" },
+  { label: "Fpub Certificates", key: "fpub_certificates" },
+  { label: "Fpub Award Name", key: "fpub_award_name" },
+  { label: "Fpub Awarded By", key: "fpub_awarded_by" },
+  { label: "Fpub Location", key: "fpub_location" },
+  { label: "Fpub Mode", key: "fpub_mode" },
+  { label: "Fpub Pub Type", key: "fpub_pub_type" },
+  { label: "Fpub Google Scholar ID", key: "fpub_google_scholar_id" },
+
+  // (Publications – Students)
+  { label: "Spub Paper Title", key: "spub_paper_title" },
+  { label: "Spub Author Names", key: "spub_author_names" },
+  { label: "Spub Intl Journal Name", key: "spub_international_journal_name" },
+  { label: "Spub Intl Conf Name", key: "spub_international_conf_name" },
+  { label: "Spub Conference Name", key: "spub_conference_name" },
+  { label: "Spub Book Chapter Title", key: "spub_book_chapter_title" },
+  { label: "Spub Publisher Name", key: "spub_publisher_name" },
+  { label: "Spub Editor Names", key: "spub_editor_names" },
+  { label: "Spub DOI", key: "spub_doi" },
+  { label: "Spub Volume of Publication", key: "spub_volume_of_publication" },
+  { label: "Spub Publication Name", key: "spub_publication_name" },
+  { label: "Spub Publication Date", key: "spub_publication_date" },
+  { label: "Spub Presentation Date", key: "spub_presentation_date" },
+  { label: "Spub Certificates", key: "spub_certificates" },
+  { label: "Spub Award Name", key: "spub_award_name" },
+  { label: "Spub Awarded By", key: "spub_awarded_by" },
+  { label: "Spub Location", key: "spub_location" },
+  { label: "Spub Mode", key: "spub_mode" },
+  { label: "Spub Pub Type", key: "spub_pub_type" },
+  { label: "Spub Google Scholar ID", key: "spub_google_scholar_id" },
 ];
 
 export default function NewsletterAdmin() {
+  const router = useRouter();
+
   // Authentication states
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -137,9 +296,7 @@ export default function NewsletterAdmin() {
 
   const itemsPerPage = 10;
 
-  // ──────────────────────────────────────────────────────────
   // 1) Check Auth on mount
-  // ──────────────────────────────────────────────────────────
   useEffect(() => {
     const checkAuth = async () => {
       const { data: userData, error } = await supabase.auth.getUser();
@@ -155,11 +312,10 @@ export default function NewsletterAdmin() {
     checkAuth();
   }, []);
 
-  // ──────────────────────────────────────────────────────────
   // 2) Fetch data only if user is valid
-  // ──────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
+      // Query supabase
       const response = (await supabase
         .from("newsletter_form")
         .select("*", { count: "exact" })
@@ -191,11 +347,8 @@ export default function NewsletterAdmin() {
     }
   }, [authChecked, userEmail, currentPage]);
 
-  // ──────────────────────────────────────────────────────────
-  // 3) Condition-based rendering
-  // ──────────────────────────────────────────────────────────
+  // Condition-based rendering
 
-  // If we haven't finished checking auth, show a "Loading" or "Checking" state
   if (!authChecked) {
     return (
       <div className="mt-10 text-center">
@@ -205,7 +358,6 @@ export default function NewsletterAdmin() {
     );
   }
 
-  // If userEmail is null, there's no user logged in
   if (!userEmail) {
     return (
       <div className="mt-10 text-center">
@@ -214,7 +366,6 @@ export default function NewsletterAdmin() {
     );
   }
 
-  // If userEmail is not in the allowed list
   if (!ALLOWED_ADMIN_EMAILS.includes(userEmail)) {
     return (
       <div className="mt-10 text-center">
@@ -226,9 +377,7 @@ export default function NewsletterAdmin() {
     );
   }
 
-  // ──────────────────────────────────────────────────────────
   // 4) The user is valid -> Admin Panel
-  // ──────────────────────────────────────────────────────────
   const handleDelete = async (id: number) => {
     const { error } = await supabase.from("newsletter_form").delete().eq("id", id);
     if (error) {
@@ -278,14 +427,18 @@ export default function NewsletterAdmin() {
     else setExpandedRow(id);
   };
 
-  // ──────────────────────────────────────────────────────────
+  // Go back to Home Page
+  const goBackHome = () => {
+    router.push("/");
+  };
+
   // 5) Render the table since user is verified
-  // ──────────────────────────────────────────────────────────
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-4">Newsletter Form Admin Panel</h1>
 
       <div className="flex flex-wrap gap-4 mb-6">
+        <Button onClick={goBackHome}>Back to Home</Button>
         <Button onClick={handleDownload}>Download XLSX</Button>
       </div>
 
@@ -332,7 +485,10 @@ export default function NewsletterAdmin() {
                   {/* Actions */}
                   <TableCell>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <Button variant="destructive" onClick={() => handleDelete(item.id)}>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDelete(item.id)}
+                      >
                         Delete
                       </Button>
                       <Button onClick={() => toggleExpandedRow(item.id)}>
@@ -352,6 +508,34 @@ export default function NewsletterAdmin() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {extraFields.map(({ label, key }) => {
                             const fieldValue = item[key];
+                            // If this field is an array of photo paths:
+                            if (
+                              Array.isArray(fieldValue) &&
+                              key.toLowerCase().includes("photo")
+                            ) {
+                              return (
+                                <div key={key} className="border p-2 rounded bg-white">
+                                  <span className="block font-medium mb-1">
+                                    {label}
+                                  </span>
+                                  {fieldValue.length > 0 ? (
+                                    fieldValue.map((photoPath: string, idx: number) => (
+                                      <a
+                                        key={idx}
+                                        href={getPhotoUrl(photoPath)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 underline hover:text-blue-800 block"
+                                      >
+                                        {label} {idx + 1}
+                                      </a>
+                                    ))
+                                  ) : (
+                                    <span className="block text-gray-700">—</span>
+                                  )}
+                                </div>
+                              );
+                            }
                             return (
                               <div key={key} className="border p-2 rounded bg-white">
                                 <span className="block font-medium mb-1">{label}</span>
