@@ -43,7 +43,7 @@ export default function Footer() {
         {/* Bottom Section: Divider & Copyright */}
         <div className="mt-6 pt-6 border-t border-gray-300 text-center">
           <p className="text-sm text-gray-600">
-            © 2023 BMSIT&M - Department of AI&ML. All rights reserved.
+            © 2025 BMSIT&M - Department of AI&ML. All rights reserved.
           </p>
         </div>
       </div>

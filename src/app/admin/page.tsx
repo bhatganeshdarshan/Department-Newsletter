@@ -39,6 +39,7 @@ type NewsletterRow = any;
 const ALLOWED_ADMIN_EMAILS = [
   "bhatganeshdarshan10@gmail.com",
   "rajeshaiml@bmsit.in",
+  "1by22ai039@bmsit.in"
 ];
 
 // S3 endpoint for photos
