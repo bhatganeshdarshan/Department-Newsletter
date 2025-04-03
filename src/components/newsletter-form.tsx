@@ -25,11 +25,6 @@ import { supabase } from "../../dbConfig";
 import { Database } from "../../database.types";
 import { useRouter } from "next/navigation";
 
-interface NewsLetterProps {
-  darkMode: boolean;
-  toggleDarkMode: () => void;
-}
-
 type NewsletterFormData = Database["public"]["Tables"]["newsletter_form"]["Insert"];
 
 export default function NewsletterFormComponent() {
@@ -37,30 +32,31 @@ export default function NewsletterFormComponent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const router = useRouter();
   const navigateToAdmin = () => {
     router.push("/admin");
   };
 
-  // Handles changes for all inputs, including file inputs
+  // 1) Handle all input changes, including file inputs
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
+
     if (type === "file") {
       const fileInput = e.target as HTMLInputElement;
       const files = fileInput.files;
       if (files && files.length > 0) {
-        setFormData((prevData) => ({ ...prevData, [name]: files }));
+        // Store the FileList in state under the relevant property
+        setFormData((prev) => ({ ...prev, [name]: files }));
       }
     } else {
-      setFormData((prevData) => ({ ...prevData, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  // Upload a single file to Supabase Storage
+  // 2) Upload a single file to Supabase Storage
   const uploadFile = async (file: File) => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -72,50 +68,50 @@ export default function NewsletterFormComponent() {
       console.error("Error uploading file:", error);
       throw error;
     }
+    // Return just the path for this uploaded file
     return data.path;
   };
 
-  // Handle final form submission
+  // 3) Handle final form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
-    setUploadedFiles([]);
 
     try {
-      // Handle file uploads first (if any)
-      const filesToUpload = formData.attached_photos as FileList | undefined;
-      let uploadedPaths: string[] = [];
+      // We'll create a new object with the same shape as 'formData'
+      // then convert each "FileList" field to an array of paths
+      const finalFormData: NewsletterFormData = { ...formData } as NewsletterFormData;
 
-      if (filesToUpload) {
-        const uploadPromises = Array.from(filesToUpload).map(uploadFile);
-        uploadedPaths = await Promise.all(uploadPromises);
-        setUploadedFiles(uploadedPaths);
+      // Loop over all properties in formData; if it ends with "_photos" and is a FileList, upload them.
+      for (const [key, value] of Object.entries(formData)) {
+        if (key.endsWith("_photos") && value instanceof FileList) {
+          const fileList = value;
+          if (fileList.length > 0) {
+            // Upload each file, store the resulting paths
+            const uploadPromises = Array.from(fileList).map(uploadFile);
+            const uploadedPaths = await Promise.all(uploadPromises);
+            // Now store those paths in finalFormData
+            (finalFormData as any)[key] = uploadedPaths;
+          }
+        }
       }
 
-      // Prepare form data for submission
-      const formDataToSubmit: NewsletterFormData = {
-        ...formData,
-        attached_photos: uploadedPaths,
-      } as NewsletterFormData;
-
-      // Remove any leftover file input references
-      delete (formDataToSubmit as any).attached_photos_input;
-
-      // Submit form data to Supabase
+      // Insert into Supabase
       const { data, error } = await supabase
         .from("newsletter_form")
-        .insert(formDataToSubmit);
+        .insert(finalFormData);
 
       if (error) throw error;
 
       console.log("Form submitted successfully:", data);
       setSuccess(true);
-      // Reset form
+
+      // Reset the form
       setFormData({});
-    } catch (error) {
-      console.error("Error submitting form:", error);
+    } catch (err) {
+      console.error("Error submitting form:", err);
       setError("An error occurred while submitting the form. Please try again.");
     } finally {
       setIsSubmitting(false);
