@@ -1,261 +1,318 @@
-'use client'
-import React from 'react'
-import { useState, useEffect } from 'react'
-import { Button } from "@/components/ui/button"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
-} from "@/components/ui/pagination"
-import { supabase } from '../../../dbConfig'
-import * as XLSX from 'xlsx'
+"use client";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { supabase } from "../../../dbConfig";
+import * as XLSX from "xlsx";
 
-interface dTypes {
-  data: any,
-  error: any,
-  count: any,
+// ──────────────────────────────────────────────────────────
+// Type definitions matching Supabase's possible response
+// ──────────────────────────────────────────────────────────
+interface SupabaseSelectResponse<T> {
+  data: T[] | null;
+  count: number | null;
+  error: Error | null; // or PostgrestError if you import from @supabase/supabase-js
+  status: number;
+  statusText: string;
 }
 
+// We can define a row type if you prefer, or just use `any`.
+type NewsletterRow = any;
+
+// List of Admin email addresses allowed
+const ALLOWED_ADMIN_EMAILS = ["bhatganeshdarshan10@gmail.com" , "rajeshaiml@bmsit.in"];
+
 // S3 endpoint for photos
-const S3_ENDPOINT = 'https://phyeyoqcciwclxsomwcg.supabase.co/storage/v1/object/public/newsletter-photos/'
+const S3_ENDPOINT =
+  "https://phyeyoqcciwclxsomwcg.supabase.co/storage/v1/object/public/newsletter-photos/";
 
-// Define an array of new (extra) field definitions for the detailed view.
+// Main columns to display in the table row
+const mainColumns = [
+  { label: "ID", key: "id" },
+  { label: "Tab Section", key: "tab_section" },
+  { label: "MoU Org", key: "mou_org" },
+  { label: "MoU Date", key: "mou_date" },
+  { label: "Faculty Name", key: "faculty_name" },
+  { label: "Department", key: "department" },
+  { label: "Best Paper Award", key: "best_paper_award" },
+  { label: "Award Received", key: "award_received" },
+  { label: "IV Department", key: "industrial_visit_department" },
+  { label: "IV Semester", key: "industrial_visit_semester" },
+  { label: "Workshop Name", key: "workshop_name" },
+  { label: "Workshop Start", key: "workshop_start_date" },
+  { label: "FDP Details", key: "fdp_details" },
+  { label: "Tech Fest Details", key: "tech_fest_details" },
+  { label: "Research Title", key: "research_title" },
+  { label: "Research Org", key: "research_organization" },
+  { label: "Research Date", key: "research_date" },
+  { label: "Proposals Submitted", key: "research_proposals_submitted" },
+  { label: "Proposals Granted", key: "research_proposals_granted" },
+  { label: "Conference Published", key: "conference_published" },
+  { label: "Journal Published", key: "journal_published" },
+  { label: "Books Published", key: "books_published" },
+  { label: "FDPs Attended", key: "fdps_attended" },
+  { label: "MOOCs Completed", key: "moocs_completed" },
+  { label: "NPTEL Completed", key: "nptel_completed" },
+  { label: "Other Initiatives", key: "other_initiatives" },
+  { label: "Student Achievements", key: "student_achievements" },
+];
+
+// Extra fields displayed in "Expand Details"
 const extraFields = [
-  { label: 'Resource Event Name', key: 'resource_event_name' },
-  { label: 'Resource Date', key: 'resource_date' },
-  { label: 'Resource Institution', key: 'resource_institution' },
-  { label: 'Resource Topic', key: 'resource_topic' },
-  { label: 'Award Research Title', key: 'award_research_title' },
-  { label: 'Award Conference/Journal', key: 'award_conference_journal' },
-  { label: 'Award Name', key: 'award_name' },
-  { label: 'Award Given By', key: 'award_given_by' },
-  { label: 'Outreach Activity Name', key: 'outreach_activity_name' },
-  { label: 'Outreach Place', key: 'outreach_place' },
-  { label: 'Outreach Date', key: 'outreach_date' },
-  { label: 'Collaborative Research Partner', key: 'collaborative_research_partner' },
-  { label: 'Collaborative Research Description', key: 'collaborative_research_description' },
-  { label: 'Industrial Visit Faculty Coordinators', key: 'industrial_visit_faculty_coordinators' },
-  { label: 'Faculty Internship Company', key: 'faculty_internship_company' },
-  { label: 'Faculty Internship Start Date', key: 'faculty_internship_start_date' },
-  { label: 'Faculty Internship End Date', key: 'faculty_internship_end_date' },
-  { label: 'Faculty Internship Description', key: 'faculty_internship_description' },
-  { label: 'Student Internship Name', key: 'student_internship_name' },
-  { label: 'Student Internship Company', key: 'student_internship_company' },
-  { label: 'Student Internship Start Date', key: 'student_internship_start_date' },
-  { label: 'Student Internship End Date', key: 'student_internship_end_date' },
-  { label: 'Workshop Participants', key: 'workshop_participants' },
-  { label: 'Workshop Resource Person', key: 'workshop_resource_person' },
-  { label: 'FDP Duration', key: 'fdp_duration' },
-  { label: 'FDP Resource Person', key: 'fdp_resource_person' },
-  { label: 'FDP Institution', key: 'fdp_institution' },
-  { label: 'Tech Fest Event Name', key: 'tech_fest_event_name' },
-  { label: 'Tech Fest Date', key: 'tech_fest_date' },
-  { label: 'Tech Fest Participating Colleges', key: 'tech_fest_participating_colleges' },
-  { label: 'Expert Talk Topic', key: 'expert_talk_topic' },
-  { label: 'Expert Talk Speaker Name', key: 'expert_talk_speaker_name' },
-  { label: 'Expert Talk Speaker Affiliation', key: 'expert_talk_speaker_affiliation' },
-  { label: 'Expert Talk Audience', key: 'expert_talk_audience' },
-  { label: 'Expert Talk Date', key: 'expert_talk_date' },
-  { label: 'Alumni Name', key: 'alumni_name' },
-  { label: 'Alumni Graduation Year', key: 'alumni_graduation_year' },
-  { label: 'Alumni Company', key: 'alumni_company' },
-  { label: 'Alumni Topic', key: 'alumni_topic' },
-  { label: 'Research Funding Organization', key: 'research_funding_organization' },
-  { label: 'Research Approval Date', key: 'research_approval_date' },
-  { label: 'Research Collaborative Partner', key: 'research_collaborative_partner' },
-  { label: 'Research Collaboration Duration', key: 'research_collaboration_duration' },
-  { label: 'Research Collaboration Outcomes', key: 'research_collaboration_outcomes' },
-  { label: 'Faculty Books Chapters', key: 'faculty_books_chapters' },
-  { label: 'Faculty Collaborative Research', key: 'faculty_collaborative_research' },
-  { label: 'Faculty Expert Talks', key: 'faculty_expert_talks' },
-  { label: 'Faculty Alumni Talks', key: 'faculty_alumni_talks' },
-  { label: 'Faculty Industrial Visits', key: 'faculty_industrial_visits' },
-  { label: 'Faculty MoUs Operational', key: 'faculty_mous_operational' },
-  { label: 'Faculty Consultancy Completed', key: 'faculty_consultancy_completed' },
-  { label: 'Faculty EDP Completed', key: 'faculty_edp_completed' },
-  { label: 'Faculty Talks Delivered', key: 'faculty_talks_delivered' },
-  { label: 'Student Conference Papers', key: 'student_conference_papers' },
-  { label: 'Student Journal Papers', key: 'student_journal_papers' },
-  { label: 'Student Conferences Attended', key: 'student_conferences_attended' },
-  { label: 'Student Hackathons', key: 'student_hackathons' },
-  { label: 'Student MOOCs Completed', key: 'student_moocs_completed' },
-  { label: 'Student NPTEL Completed', key: 'student_nptel_completed' },
-  { label: 'Student AICTE Participation', key: 'student_aicte_participation' },
-  { label: 'Sports Events Count', key: 'sports_events_count' },
-  { label: 'Placement Companies', key: 'placement_companies' },
-  { label: 'Placement CTC', key: 'placement_ctc' },
-  { label: 'HEC Events Count', key: 'hec_events_count' },
-  { label: 'NCC/BICEP Events Count', key: 'ncc_bicep_events_count' },
-]
+  { label: "Session Chair", key: "session_chair" },
+  { label: "BOE/BOS Member", key: "boe_bos_member" },
+  { label: "Faculty Internship Company", key: "faculty_internship_company" },
+  { label: "Faculty Internship Start Date", key: "faculty_internship_start_date" },
+  { label: "Faculty Internship End Date", key: "faculty_internship_end_date" },
+  { label: "Faculty Internship Description", key: "faculty_internship_description" },
+  { label: "Student Internship Name", key: "student_internship_name" },
+  { label: "Student Internship Company", key: "student_internship_company" },
+  { label: "Student Internship Start Date", key: "student_internship_start_date" },
+  { label: "Student Internship End Date", key: "student_internship_end_date" },
+  { label: "Workshop Participants", key: "workshop_participants" },
+  { label: "Workshop Resource Person", key: "workshop_resource_person" },
+  { label: "FDP Duration", key: "fdp_duration" },
+  { label: "FDP Resource Person", key: "fdp_resource_person" },
+  { label: "FDP Institution", key: "fdp_institution" },
+  { label: "Tech Fest Event Name", key: "tech_fest_event_name" },
+  { label: "Tech Fest Date", key: "tech_fest_date" },
+  { label: "Tech Fest Participating Colleges", key: "tech_fest_participating_colleges" },
+  { label: "Collaborative Research Partner", key: "collaborative_research_partner" },
+  { label: "Collaborative Research Description", key: "collaborative_research_description" },
+  { label: "Research Cost", key: "research_cost" },
+  { label: "Research Center Activities", key: "research_center_activities" },
+  { label: "Research Funding Org", key: "research_funding_organization" },
+  { label: "Research Approval Date", key: "research_approval_date" },
+  { label: "Research Collab Partner", key: "research_collaborative_partner" },
+  { label: "Research Collab Duration", key: "research_collaboration_duration" },
+  { label: "Research Collab Outcomes", key: "research_collaboration_outcomes" },
+  { label: "Faculty Books Chapters", key: "faculty_books_chapters" },
+  { label: "Faculty Collaborative Research", key: "faculty_collaborative_research" },
+  { label: "Faculty Expert Talks", key: "faculty_expert_talks" },
+  { label: "Faculty Alumni Talks", key: "faculty_alumni_talks" },
+  { label: "Faculty Industrial Visits", key: "faculty_industrial_visits" },
+  { label: "Faculty MoUs Operational", key: "faculty_mous_operational" },
+  { label: "Faculty Consultancy Completed", key: "faculty_consultancy_completed" },
+  { label: "Faculty EDP Completed", key: "faculty_edp_completed" },
+  { label: "Faculty Talks Delivered", key: "faculty_talks_delivered" },
+  { label: "Student Conference Papers", key: "student_conference_papers" },
+  { label: "Student Journal Papers", key: "student_journal_papers" },
+  { label: "Student Conferences Attended", key: "student_conferences_attended" },
+  { label: "Student Hackathons", key: "student_hackathons" },
+  { label: "Student MOOCs Completed", key: "student_moocs_completed" },
+  { label: "Student NPTEL Completed", key: "student_nptel_completed" },
+  { label: "Student AICTE Participation", key: "student_aicte_participation" },
+  { label: "Sports Events Count", key: "sports_events_count" },
+  { label: "Placement Companies", key: "placement_companies" },
+  { label: "Placement CTC", key: "placement_ctc" },
+  { label: "HEC Events Count", key: "hec_events_count" },
+  { label: "NCC/BICEP Events Count", key: "ncc_bicep_events_count" },
+];
 
-const NewsletterAdmin = () => {
-  const [data, setData] = useState<any[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
-  const itemsPerPage = 10
+export default function NewsletterAdmin() {
+  // Authentication states
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
+  // Admin data states
+  const [data, setData] = useState<NewsletterRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+  const itemsPerPage = 10;
+
+  // ──────────────────────────────────────────────────────────
+  // 1) Check Auth on mount
+  // ──────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchData()
-  }, [currentPage])
+    const checkAuth = async () => {
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Error getting user:", error);
+        setUserEmail(null);
+      } else {
+        // if userData.user?.email is undefined, fallback to null
+        setUserEmail(userData.user?.email ?? null);
+      }
+      setAuthChecked(true); // We have checked authentication
+    };
+    checkAuth();
+  }, []);
 
-  const fetchData = async () => {
-    const { data, error, count }: dTypes = await supabase
-      .from('newsletter_form')
-      .select('*', { count: 'exact' })
-      .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
+  // ──────────────────────────────────────────────────────────
+  // 2) Fetch data only if user is valid
+  // ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = (await supabase
+        .from("newsletter_form")
+        .select("*", { count: "exact" })
+        .range(
+          (currentPage - 1) * itemsPerPage,
+          currentPage * itemsPerPage - 1
+        )) as unknown as SupabaseSelectResponse<NewsletterRow>;
 
-    if (error) console.error('Error fetching data:', error)
-    else {
-      setData(data)
-      setTotalPages(Math.ceil(count / itemsPerPage))
+      const { data: rows, error, count } = response;
+
+      if (error) {
+        console.error("Error fetching data:", error);
+      } else {
+        // rows could be null, fallback to []
+        setData(rows ?? []);
+
+        // count can be null, fallback to 0
+        const total = count ?? 0;
+        setTotalPages(Math.ceil(total / itemsPerPage));
+      }
+    };
+
+    // Only fetch if:
+    // - we have completed checking auth
+    // - userEmail is not null
+    // - userEmail is in allowed list
+    if (authChecked && userEmail && ALLOWED_ADMIN_EMAILS.includes(userEmail)) {
+      fetchData();
     }
+  }, [authChecked, userEmail, currentPage]);
+
+  // ──────────────────────────────────────────────────────────
+  // 3) Condition-based rendering
+  // ──────────────────────────────────────────────────────────
+
+  // If we haven't finished checking auth, show a "Loading" or "Checking" state
+  if (!authChecked) {
+    return (
+      <div className="mt-10 text-center">
+        <h1 className="text-2xl font-semibold">Checking user status...</h1>
+        <p className="text-gray-600 mt-2">Please wait...</p>
+      </div>
+    );
   }
 
-  const handleDelete = async (id: any) => {
-    const { error } = await supabase
-      .from('newsletter_form')
-      .delete()
-      .eq('id', id)
-
-    if (error) console.error('Error deleting item:', error)
-    else fetchData()
+  // If userEmail is null, there's no user logged in
+  if (!userEmail) {
+    return (
+      <div className="mt-10 text-center">
+        <h1 className="text-2xl font-semibold">Please log in</h1>
+      </div>
+    );
   }
 
-  const handleDownload = async () => {
-    const { data, error }: dTypes = await supabase
-      .from('newsletter_form')
-      .select('*')
+  // If userEmail is not in the allowed list
+  if (!ALLOWED_ADMIN_EMAILS.includes(userEmail)) {
+    return (
+      <div className="mt-10 text-center">
+        <h1 className="text-2xl font-semibold">Access Denied</h1>
+        <p className="text-gray-600 mt-2">
+          You do not have permission to view this page.
+        </p>
+      </div>
+    );
+  }
 
+  // ──────────────────────────────────────────────────────────
+  // 4) The user is valid -> Admin Panel
+  // ──────────────────────────────────────────────────────────
+  const handleDelete = async (id: number) => {
+    const { error } = await supabase.from("newsletter_form").delete().eq("id", id);
     if (error) {
-      console.error('Error fetching data for download:', error)
-      return
+      console.error("Error deleting item:", error);
+      return;
+    }
+    // Re-fetch data after deletion
+    const response = (await supabase
+      .from("newsletter_form")
+      .select("*", { count: "exact" })
+      .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)) as unknown as SupabaseSelectResponse<NewsletterRow>;
+
+    const { data: rows, error: fetchError, count } = response;
+    if (fetchError) {
+      console.error("Error fetching data:", fetchError);
+    } else {
+      setData(rows ?? []);
+      setTotalPages(Math.ceil((count ?? 0) / itemsPerPage));
+    }
+  };
+
+  // Download entire dataset as XLSX
+  const handleDownload = async () => {
+    const response = (await supabase
+      .from("newsletter_form")
+      .select("*", { count: "exact" })) as unknown as SupabaseSelectResponse<NewsletterRow>;
+
+    const { data: allRows, error } = response;
+    if (error) {
+      console.error("Error fetching data for download:", error);
+      return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Newsletter Form Data')
-    XLSX.writeFile(workbook, 'newsletter_form_data.xlsx')
-  }
+    // allRows can be null, fallback to []
+    const worksheet = XLSX.utils.json_to_sheet(allRows ?? []);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Newsletter Form Data");
+    XLSX.writeFile(workbook, "newsletter_form_data.xlsx");
+  };
 
   const getPhotoUrl = (path: string) => {
-    return `${S3_ENDPOINT}${path}`
-  }
+    return `${S3_ENDPOINT}${path}`;
+  };
 
   const toggleExpandedRow = (id: number) => {
-    if (expandedRow === id) setExpandedRow(null)
-    else setExpandedRow(id)
-  }
+    if (expandedRow === id) setExpandedRow(null);
+    else setExpandedRow(id);
+  };
 
+  // ──────────────────────────────────────────────────────────
+  // 5) Render the table since user is verified
+  // ──────────────────────────────────────────────────────────
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-4">Newsletter Form Admin Panel</h1>
-      <div className="flex flex-wrap gap-4 mb-4">
+
+      <div className="flex flex-wrap gap-4 mb-6">
         <Button onClick={handleDownload}>Download XLSX</Button>
       </div>
-      <div className="overflow-auto">
-        <Table className="min-w-max">
-          <TableHeader>
+
+      <div className="overflow-auto bg-white shadow-sm rounded-lg">
+        <Table className="min-w-full border">
+          <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Tab Section</TableHead>
-              <TableHead>MOU Org</TableHead>
-              <TableHead>MOU Date</TableHead>
-              <TableHead>Faculty Name</TableHead>
-              <TableHead>Designation</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Session Chair</TableHead>
-              <TableHead>BOE/BOS Member</TableHead>
-              <TableHead>Best Paper Award</TableHead>
-              <TableHead>Award Received</TableHead>
-              <TableHead>Industrial Visit Dept</TableHead>
-              <TableHead>Visit Semester</TableHead>
-              <TableHead>Visit Place</TableHead>
-              <TableHead>Visit Date</TableHead>
-              <TableHead>Visit Students</TableHead>
-              <TableHead>Faculty Internship</TableHead>
-              <TableHead>Student Internship</TableHead>
-              <TableHead>Workshop Name</TableHead>
-              <TableHead>Workshop Start Date</TableHead>
-              <TableHead>Workshop End Date</TableHead>
-              <TableHead>FDP Details</TableHead>
-              <TableHead>Tech Fest Details</TableHead>
-              <TableHead>Expert Talk</TableHead>
-              <TableHead>Alumni Interaction</TableHead>
-              <TableHead>Research Title</TableHead>
-              <TableHead>Research Org</TableHead>
-              <TableHead>Research Date</TableHead>
-              <TableHead>Research Cost</TableHead>
-              <TableHead>Proposals Submitted</TableHead>
-              <TableHead>Proposals Granted</TableHead>
-              <TableHead>Old Details</TableHead>
-              <TableHead>Conference Published</TableHead>
-              <TableHead>Journal Published</TableHead>
-              <TableHead>Books Published</TableHead>
-              <TableHead>FDPs Attended</TableHead>
-              <TableHead>MOOCs Completed</TableHead>
-              <TableHead>NPTEL Completed</TableHead>
-              <TableHead>Other Initiatives</TableHead>
-              <TableHead>Student Achievements</TableHead>
+              {mainColumns.map((col) => (
+                <TableHead key={col.key}>{col.label}</TableHead>
+              ))}
               <TableHead>Attached Photos</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {data.map((item: any) => (
+            {data.map((item) => (
               <React.Fragment key={item.id}>
-                <TableRow>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>{item.tab_section}</TableCell>
-                  <TableCell>{item.mou_org}</TableCell>
-                  <TableCell>{item.mou_date}</TableCell>
-                  <TableCell>{item.faculty_name}</TableCell>
-                  <TableCell>{item.designation}</TableCell>
-                  <TableCell>{item.department}</TableCell>
-                  <TableCell>{item.session_chair}</TableCell>
-                  <TableCell>{item.boe_bos_member}</TableCell>
-                  <TableCell>{item.best_paper_award}</TableCell>
-                  <TableCell>{item.award_received}</TableCell>
-                  <TableCell>{item.industrial_visit_department}</TableCell>
-                  <TableCell>{item.industrial_visit_semester}</TableCell>
-                  <TableCell>{item.industrial_visit_place}</TableCell>
-                  <TableCell>{item.industrial_visit_date}</TableCell>
-                  <TableCell>{item.industrial_visit_students}</TableCell>
-                  <TableCell>{item.faculty_internship}</TableCell>
-                  <TableCell>{item.student_internship}</TableCell>
-                  <TableCell>{item.workshop_name}</TableCell>
-                  <TableCell>{item.workshop_start_date}</TableCell>
-                  <TableCell>{item.workshop_end_date}</TableCell>
-                  <TableCell>{item.fdp_details}</TableCell>
-                  <TableCell>{item.tech_fest_details || item.tech_fest}</TableCell>
-                  <TableCell>{item.expert_talk}</TableCell>
-                  <TableCell>{item.alumni_interaction}</TableCell>
-                  <TableCell>{item.research_title}</TableCell>
-                  <TableCell>{item.research_organization}</TableCell>
-                  <TableCell>{item.research_date}</TableCell>
-                  <TableCell>{item.research_cost}</TableCell>
-                  <TableCell>{item.research_proposals_submitted}</TableCell>
-                  <TableCell>{item.research_proposals_granted}</TableCell>
-                  <TableCell>{item.research_center_details || item.research_centre_activities}</TableCell>
-                  <TableCell>{item.conference_published}</TableCell>
-                  <TableCell>{item.journal_published}</TableCell>
-                  <TableCell>{item.books_published}</TableCell>
-                  <TableCell>{item.fdps_attended}</TableCell>
-                  <TableCell>{item.moocs_completed}</TableCell>
-                  <TableCell>{item.nptel_completed}</TableCell>
-                  <TableCell>{item.other_initiatives}</TableCell>
-                  <TableCell>{item.student_achievements}</TableCell>
+                {/* MAIN ROW */}
+                <TableRow className="hover:bg-gray-50">
+                  {mainColumns.map((col) => (
+                    <TableCell key={col.key}>
+                      {item[col.key] != null ? item[col.key].toString() : ""}
+                    </TableCell>
+                  ))}
+
+                  {/* Photos */}
                   <TableCell>
                     {item.attached_photos &&
                       item.attached_photos.map((photo: string, index: number) => (
@@ -264,33 +321,47 @@ const NewsletterAdmin = () => {
                             href={getPhotoUrl(photo)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
+                            className="text-blue-600 underline hover:text-blue-800"
                           >
                             Photo {index + 1}
                           </a>
                         </div>
                       ))}
                   </TableCell>
+
+                  {/* Actions */}
                   <TableCell>
-                    <div className="flex flex-col gap-2">
-                      <Button variant="destructive" onClick={() => handleDelete(item.id)}>Delete</Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button variant="destructive" onClick={() => handleDelete(item.id)}>
+                        Delete
+                      </Button>
                       <Button onClick={() => toggleExpandedRow(item.id)}>
-                        {expandedRow === item.id ? 'Collapse Details' : 'Expand Details'}
+                        {expandedRow === item.id ? "Collapse" : "Details"}
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
+
+                {/* Expanded row with extra details */}
                 {expandedRow === item.id && (
                   <TableRow>
-                    <TableCell colSpan={data.length}>
-                      <div className="bg-gray-100 p-2 rounded">
-                        <h3 className="font-semibold mb-2">Extra Details</h3>
-                        {extraFields.map(({ label, key }) => (
-                          <div key={key} className="mb-1">
-                            <span className="font-medium">{label}:</span>{' '}
-                            <span>{item[key] !== null && item[key] !== undefined ? item[key].toString() : '-'}</span>
-                          </div>
-                        ))}
+                    {/* colSpan = mainColumns.length + 2 (photos + actions) */}
+                    <TableCell colSpan={mainColumns.length + 2}>
+                      <div className="bg-gray-100 p-4 rounded-md mt-2">
+                        <h3 className="font-semibold mb-4 text-lg">Extra Details</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {extraFields.map(({ label, key }) => {
+                            const fieldValue = item[key];
+                            return (
+                              <div key={key} className="border p-2 rounded bg-white">
+                                <span className="block font-medium mb-1">{label}</span>
+                                <span className="block text-gray-700">
+                                  {fieldValue != null ? fieldValue.toString() : "—"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -300,25 +371,32 @@ const NewsletterAdmin = () => {
           </TableBody>
         </Table>
       </div>
-      <Pagination className="mt-4">
+
+      {/* PAGINATION */}
+      <Pagination className="mt-6">
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} />
+            <PaginationPrevious
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            />
           </PaginationItem>
-          {[...Array(totalPages)].map((_, i) => (
-            <PaginationItem key={i}>
-              <PaginationLink onClick={() => setCurrentPage(i + 1)} isActive={currentPage === i + 1}>
-                {i + 1}
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+            <PaginationItem key={pageNumber}>
+              <PaginationLink
+                onClick={() => setCurrentPage(pageNumber)}
+                isActive={currentPage === pageNumber}
+              >
+                {pageNumber}
               </PaginationLink>
             </PaginationItem>
           ))}
           <PaginationItem>
-            <PaginationNext onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} />
+            <PaginationNext
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            />
           </PaginationItem>
         </PaginationContent>
       </Pagination>
     </div>
-  )
+  );
 }
-
-export default NewsletterAdmin
