@@ -5,16 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sun, Moon, Lock } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Lock } from 'lucide-react';
 import Image from "next/image";
+
+// ───── Use shadcn/ui's Accordion components (make sure you have them installed) ─────
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 import { supabase } from "../../dbConfig";
 import { Database } from "../../database.types";
@@ -31,15 +32,21 @@ export default function NewsletterFormComponent({
   darkMode,
   toggleDarkMode,
 }: NewsLetterProps) {
-  const [formData, setFormData] = useState<Partial<NewsletterFormData>>({
-    tab_section: "mou",
-  });
+  const [formData, setFormData] = useState<Partial<NewsletterFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const router = useRouter(); 
+  const navigateToAdmin = () => {
+    router.push('/admin');
+  };
+
+  // Handles changes for all inputs, including file inputs
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
     if (type === 'file') {
       const fileInput = e.target as HTMLInputElement;
@@ -52,11 +59,7 @@ export default function NewsletterFormComponent({
     }
   };
 
-  const router = useRouter(); 
-  const navigateToAdmin = () => {
-    router.push('/admin');
-  };
-
+  // Upload a single file to Supabase Storage
   const uploadFile = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -71,6 +74,7 @@ export default function NewsletterFormComponent({
     return data.path;
   };
 
+  // Handle final form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -79,34 +83,36 @@ export default function NewsletterFormComponent({
     setUploadedFiles([]);
 
     try {
-      // Handle file uploads first
+      // Handle file uploads first (if any)
       const filesToUpload = formData.attached_photos as FileList | undefined;
+      let uploadedPaths: string[] = [];
+
       if (filesToUpload) {
         const uploadPromises = Array.from(filesToUpload).map(uploadFile);
-        const uploadedPaths = await Promise.all(uploadPromises);
+        uploadedPaths = await Promise.all(uploadPromises);
         setUploadedFiles(uploadedPaths);
       }
 
       // Prepare form data for submission
       const formDataToSubmit: NewsletterFormData = {
         ...formData,
-        tab_section: formData.tab_section || "mou", // Ensure tab_section is always a string
-        attached_photos: uploadedFiles,
+        attached_photos: uploadedPaths,
       } as NewsletterFormData;
 
-      // Remove file input from form data if exists
+      // Remove extraneous file input references
       delete (formDataToSubmit as any).attached_photos_input;
 
-      // Submit form data
+      // Submit form data to Supabase
       const { data, error } = await supabase
         .from("newsletter_form")
         .insert(formDataToSubmit);
 
       if (error) throw error;
-      
+
       console.log("Form submitted successfully:", data);
       setSuccess(true);
-      setFormData({ tab_section: "mou" }); // Reset form
+      // Reset form data
+      setFormData({});
     } catch (error) {
       console.error("Error submitting form:", error);
       setError("An error occurred while submitting the form. Please try again.");
@@ -117,6 +123,7 @@ export default function NewsletterFormComponent({
 
   return (
     <div>
+      {/* ------------------ Header Section ------------------ */}
       <header className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
           <Image
@@ -139,138 +146,145 @@ export default function NewsletterFormComponent({
         </Button>
       </header>
 
-      <form onSubmit={handleSubmit} className="container mx-auto p-4 space-y-8">
+      {/* ------------------ Main Form Section ------------------ */}
+      <form onSubmit={handleSubmit} className="container mx-auto p-4">
         <h1 className="text-3xl font-bold text-center mb-8">
           Newsletter Submission Form
         </h1>
 
-        <Tabs defaultValue="mou" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
-            <TabsTrigger value="mou">MoU Details</TabsTrigger>
-            <TabsTrigger value="industry">Industry Interaction</TabsTrigger>
-            <TabsTrigger value="workshops">Workshops & FDPs</TabsTrigger>
-            <TabsTrigger value="seminars">Seminars & Talks</TabsTrigger>
-            <TabsTrigger value="research">Research Work</TabsTrigger>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-          </TabsList>
+        {/**
+         * ─────────────────────────────────────────────
+         * ACCORDION for Collapsible Sections
+         * ─────────────────────────────────────────────
+         */}
+        <Accordion
+          type="multiple" // allows multiple sections to be open simultaneously
+          className="space-y-4"
+        >
 
-          {/* --------------------- MoU Details Tab --------------------- */}
-          <TabsContent value="mou">
-            <Card>
-              <CardHeader>
-                <CardTitle>MoU Details</CardTitle>
-                <CardDescription>
-                  Enter details about Memorandums of Understanding, awards, and recognitions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing MoU fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ──────────── MoU / Awards / Recognitions Section ──────────── */}
+          <AccordionItem value="mou">
+            <AccordionTrigger className="text-lg font-semibold">MoU / Awards / Recognitions</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>MoU Details</CardTitle>
+                  <CardDescription>
+                    Enter details about newly signed MoUs or recognitions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* No fields are required now; all optional */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mou_org">MoUs signed with:</Label>
+                      <Input
+                        id="mou_org"
+                        name="mou_org"
+                        value={formData.mou_org || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mou_date">Date:</Label>
+                      <Input
+                        id="mou_date"
+                        name="mou_date"
+                        type="date"
+                        value={formData.mou_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="faculty_name">Coordinated by:</Label>
+                      <Input
+                        id="faculty_name"
+                        name="faculty_name"
+                        value={formData.faculty_name || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="designation">Designation:</Label>
+                      <Input
+                        id="designation"
+                        name="designation"
+                        value={formData.designation || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department:</Label>
+                      <Input
+                        id="department"
+                        name="department"
+                        value={formData.department || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mou_org">MoUs signed with:</Label>
+                    <Label htmlFor="session_chair">Session Chair:</Label>
                     <Input
-                      id="mou_org"
-                      name="mou_org"
-                      value={formData.mou_org || ""}
+                      id="session_chair"
+                      name="session_chair"
+                      value={formData.session_chair || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mou_date">Date:</Label>
+                    <Label htmlFor="boe_bos_member">BOE/BOS Member:</Label>
                     <Input
-                      id="mou_date"
-                      name="mou_date"
-                      type="date"
-                      value={formData.mou_date || ""}
+                      id="boe_bos_member"
+                      name="boe_bos_member"
+                      value={formData.boe_bos_member || ""}
                       onChange={handleInputChange}
-                      required
-                    /> 
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="faculty_name">Coordinated by:</Label>
-                    <Input
-                      id="faculty_name"
-                      name="faculty_name"
-                      value={formData.faculty_name || ""}
-                      onChange={handleInputChange}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="designation">Designation:</Label>
-                    <Input
-                      id="designation"
-                      name="designation"
-                      value={formData.designation || ""}
+                    <Label htmlFor="best_paper_award">Best Paper Award:</Label>
+                    <Textarea
+                      id="best_paper_award"
+                      name="best_paper_award"
+                      value={formData.best_paper_award || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="department">Department:</Label>
-                    <Input
-                      id="department"
-                      name="department"
-                      value={formData.department || ""}
+                    <Label htmlFor="award_received">Award Received:</Label>
+                    <Textarea
+                      id="award_received"
+                      name="award_received"
+                      value={formData.award_received || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="attached_photos">Attach relevant photographs:</Label>
+                    <Input
+                      id="attached_photos"
+                      name="attached_photos"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                <div className="space-y-2">
-                  <Label htmlFor="session_chair">Session Chair:</Label>
-                  <Input
-                    id="session_chair"
-                    name="session_chair"
-                    value={formData.session_chair || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="boe_bos_member">BOE/BOS Member:</Label>
-                  <Input
-                    id="boe_bos_member"
-                    name="boe_bos_member"
-                    value={formData.boe_bos_member || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="best_paper_award">Best Paper Award:</Label>
-                  <Textarea
-                    id="best_paper_award"
-                    name="best_paper_award"
-                    value={formData.best_paper_award || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="award_received">Award Received:</Label>
-                  <Textarea
-                    id="award_received"
-                    name="award_received"
-                    value={formData.award_received || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="attached_photos">Attach relevant photographs:</Label>
-                  {/* For file inputs, we do not control the value */}
-                  <Input
-                    id="attached_photos"
-                    name="attached_photos"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                {/* ---------- Additional Fields for MoU / Awards / Recognitions ---------- */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Faculty as Resource Person</div>
+          {/* ──────────── Faculty as Resource Person ──────────── */}
+          <AccordionItem value="resource-person">
+            <AccordionTrigger className="text-lg font-semibold">Faculty as Resource Person</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Resource Person Details</CardTitle>
+                  <CardDescription>Faculty delivering talks / sessions</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="resource_event_name">Event Name:</Label>
                     <Input
@@ -308,10 +322,23 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Faculty Awards</div>
+          {/* ──────────── Faculty Awards ──────────── */}
+          <AccordionItem value="faculty-awards">
+            <AccordionTrigger className="text-lg font-semibold">Faculty Awards</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Faculty Awards</CardTitle>
+                  <CardDescription>
+                    Awards / recognitions received by faculty
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="award_research_title">Research Paper Title:</Label>
                     <Input
@@ -348,10 +375,21 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Outreach Activity</div>
+          {/* ──────────── Outreach Activity ──────────── */}
+          <AccordionItem value="outreach-activity">
+            <AccordionTrigger className="text-lg font-semibold">Outreach Activity</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Outreach Activity</CardTitle>
+                  <CardDescription>Details of outreach activities</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="outreach_activity_name">Activity Name:</Label>
                     <Input
@@ -380,12 +418,27 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Collaborative Research</div>
+          {/* ──────────── Collaborative Research (MoU) ──────────── */}
+          <AccordionItem value="collab-research">
+            <AccordionTrigger className="text-lg font-semibold">Collaborative Research (MoU)</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>MoU Collaborative Research</CardTitle>
+                  <CardDescription>
+                    Details of collaborative research under MoU
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="collaborative_research_partner">Research Partner Institution:</Label>
+                    <Label htmlFor="collaborative_research_partner">
+                      Research Partner Institution:
+                    </Label>
                     <Input
                       id="collaborative_research_partner"
                       name="collaborative_research_partner"
@@ -394,7 +447,9 @@ export default function NewsletterFormComponent({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="collaborative_research_description">Description (4-5 lines):</Label>
+                    <Label htmlFor="collaborative_research_description">
+                      Description (4-5 lines):
+                    </Label>
                     <Textarea
                       id="collaborative_research_description"
                       name="collaborative_research_description"
@@ -402,94 +457,100 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* ──────────── Industrial Visit ──────────── */}
+          <AccordionItem value="industrial-visit">
+            <AccordionTrigger className="text-lg font-semibold">Industrial Visit</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Industrial Visit</CardTitle>
+                  <CardDescription>
+                    Enter details about Industrial Visits
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="industrial_visit_department">Department:</Label>
+                      <Input
+                        id="industrial_visit_department"
+                        name="industrial_visit_department"
+                        value={formData.industrial_visit_department || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="industrial_visit_semester">Semester:</Label>
+                      <Input
+                        id="industrial_visit_semester"
+                        name="industrial_visit_semester"
+                        value={formData.industrial_visit_semester || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="industrial_visit_place">Place:</Label>
+                      <Input
+                        id="industrial_visit_place"
+                        name="industrial_visit_place"
+                        value={formData.industrial_visit_place || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="industrial_visit_date">Date:</Label>
+                      <Input
+                        id="industrial_visit_date"
+                        name="industrial_visit_date"
+                        type="date"
+                        value={formData.industrial_visit_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="industrial_visit_students">Number of students:</Label>
+                      <Input
+                        id="industrial_visit_students"
+                        name="industrial_visit_students"
+                        type="number"
+                        value={formData.industrial_visit_students || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="industrial_visit_faculty_coordinators">
+                      Faculty Coordinators:
+                    </Label>
+                    <Input
+                      id="industrial_visit_faculty_coordinators"
+                      name="industrial_visit_faculty_coordinators"
+                      value={formData.industrial_visit_faculty_coordinators || ""}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-          {/* --------------------- Industry – Institute Interaction Tab --------------------- */}
-          <TabsContent value="industry">
-            <Card>
-              <CardHeader>
-                <CardTitle>Industry and Institute Interaction</CardTitle>
-                <CardDescription>
-                  Enter details about industrial visits, internships and related activities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Industrial Visit fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="industrial_visit_department">Department:</Label>
-                    <Input
-                      id="industrial_visit_department"
-                      name="industrial_visit_department"
-                      value={formData.industrial_visit_department || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="industrial_visit_semester">Semester:</Label>
-                    <Input
-                      id="industrial_visit_semester"
-                      name="industrial_visit_semester"
-                      value={formData.industrial_visit_semester || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="industrial_visit_place">Place:</Label>
-                    <Input
-                      id="industrial_visit_place"
-                      name="industrial_visit_place"
-                      value={formData.industrial_visit_place || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="industrial_visit_date">Date:</Label>
-                    <Input
-                      id="industrial_visit_date"
-                      name="industrial_visit_date"
-                      type="date"
-                      value={formData.industrial_visit_date || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="industrial_visit_students">Number of students:</Label>
-                    <Input
-                      id="industrial_visit_students"
-                      name="industrial_visit_students"
-                      type="number"
-                      value={formData.industrial_visit_students || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Additional Industrial Visit Details */}
-                <div className="space-y-2">
-                  <Label htmlFor="industrial_visit_faculty_coordinators">
-                    Faculty Coordinators:
-                  </Label>
-                  <Input
-                    id="industrial_visit_faculty_coordinators"
-                    name="industrial_visit_faculty_coordinators"
-                    value={formData.industrial_visit_faculty_coordinators || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                {/* Faculty Internship */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Faculty Internship</div>
+          {/* ──────────── Faculty Internship ──────────── */}
+          <AccordionItem value="faculty-internship">
+            <AccordionTrigger className="text-lg font-semibold">Faculty Internship</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Faculty Internship</CardTitle>
+                  <CardDescription>
+                    Details of faculty internships in industries/organizations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="faculty_internship_company">Company Name:</Label>
                     <Input
@@ -522,7 +583,9 @@ export default function NewsletterFormComponent({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="faculty_internship_description">Key Learnings/Description:</Label>
+                    <Label htmlFor="faculty_internship_description">
+                      Key Learnings/Description:
+                    </Label>
                     <Textarea
                       id="faculty_internship_description"
                       name="faculty_internship_description"
@@ -530,11 +593,23 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                {/* Student Internship */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Student Internship</div>
+          {/* ──────────── Student Internship ──────────── */}
+          <AccordionItem value="student-internship">
+            <AccordionTrigger className="text-lg font-semibold">Student Internship</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Student Internship</CardTitle>
+                  <CardDescription>
+                    Details of student internships in industries/organizations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="student_internship_name">Student Name:</Label>
                     <Input
@@ -575,89 +650,94 @@ export default function NewsletterFormComponent({
                       />
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-          {/* --------------------- Workshops / FDPs / Fests Tab --------------------- */}
-          <TabsContent value="workshops">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Workshops / Faculty Development Programmes / Fests
-                </CardTitle>
-                <CardDescription>
-                  Enter details about workshops, FDPs, and technical fests
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Workshop fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="workshop_name">Workshop Name:</Label>
-                    <Input
-                      id="workshop_name"
-                      name="workshop_name"
-                      value={formData.workshop_name || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
+          {/* ──────────── Workshops ──────────── */}
+          <AccordionItem value="workshop">
+            <AccordionTrigger className="text-lg font-semibold">Workshops</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Workshops</CardTitle>
+                  <CardDescription>
+                    Details about Workshops organized
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="workshop_name">Workshop Name:</Label>
+                      <Input
+                        id="workshop_name"
+                        name="workshop_name"
+                        value={formData.workshop_name || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="workshop_start_date">Start Date:</Label>
+                      <Input
+                        id="workshop_start_date"
+                        name="workshop_start_date"
+                        type="date"
+                        value={formData.workshop_start_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="workshop_end_date">End Date:</Label>
+                      <Input
+                        id="workshop_end_date"
+                        name="workshop_end_date"
+                        type="date"
+                        value={formData.workshop_end_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workshop_start_date">Start Date:</Label>
-                    <Input
-                      id="workshop_start_date"
-                      name="workshop_start_date"
-                      type="date"
-                      value={formData.workshop_start_date || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-300">
+                    <div className="space-y-2">
+                      <Label htmlFor="workshop_participants">Number of Participants:</Label>
+                      <Input
+                        id="workshop_participants"
+                        name="workshop_participants"
+                        type="number"
+                        value={formData.workshop_participants || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="workshop_resource_person">Resource Person Name:</Label>
+                      <Input
+                        id="workshop_resource_person"
+                        name="workshop_resource_person"
+                        value={formData.workshop_resource_person || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workshop_end_date">End Date:</Label>
-                    <Input
-                      id="workshop_end_date"
-                      name="workshop_end_date"
-                      type="date"
-                      value={formData.workshop_end_date || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                {/* NEW FIELDS for Workshop */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-300">
+          {/* ──────────── FDP ──────────── */}
+          <AccordionItem value="fdp">
+            <AccordionTrigger className="text-lg font-semibold">FDP (Faculty Development Programmes)</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Faculty Development Programmes</CardTitle>
+                  <CardDescription>
+                    Details about FDPs organized or attended
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="workshop_participants">Number of Participants:</Label>
-                    <Input
-                      id="workshop_participants"
-                      name="workshop_participants"
-                      type="number"
-                      value={formData.workshop_participants || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workshop_resource_person">Resource Person Name:</Label>
-                    <Input
-                      id="workshop_resource_person"
-                      name="workshop_resource_person"
-                      value={formData.workshop_resource_person || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                {/* FDP Details */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Faculty Development Programme (FDP)</div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fdp_details">
-                      FDP Details:
-                    </Label>
+                    <Label htmlFor="fdp_details">FDP Details:</Label>
                     <Textarea
                       id="fdp_details"
                       name="fdp_details"
@@ -694,11 +774,23 @@ export default function NewsletterFormComponent({
                       />
                     </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                {/* Technical Fest */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Technical Fest</div>
+          {/* ──────────── Technical Fest ──────────── */}
+          <AccordionItem value="tech-fest">
+            <AccordionTrigger className="text-lg font-semibold">Technical Fest</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Technical Fest</CardTitle>
+                  <CardDescription>
+                    Details about the technical fest conducted
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="tech_fest_details">Technical Fest Description:</Label>
                     <Textarea
@@ -741,46 +833,23 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-          {/* --------------------- Seminars / Expert Talks / Alumni Interaction Tab --------------------- */}
-          <TabsContent value="seminars">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Seminars / Expert Talks / Alumni Interaction
-                </CardTitle>
-                <CardDescription>
-                  Enter details about seminars, expert talks, and alumni interactions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing fields */}
-                <div className="space-y-2">
-                  <Label htmlFor="expert_talk">Expert Talk Organized:</Label>
-                  <Textarea
-                    id="expert_talk"
-                    name="expert_talk"
-                    value={formData.expert_talk || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="alumni_interaction">Alumni Interaction:</Label>
-                  <Textarea
-                    id="alumni_interaction"
-                    name="alumni_interaction"
-                    value={formData.alumni_interaction || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                {/* NEW FIELDS for Expert Talk */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Expert Talk Details</div>
+          {/* ──────────── Expert Talk ──────────── */}
+          <AccordionItem value="expert-talk">
+            <AccordionTrigger className="text-lg font-semibold">Expert Talk</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Expert Talk</CardTitle>
+                  <CardDescription>
+                    Details about any expert talk organized
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="expert_talk_topic">Topic:</Label>
                     <Input
@@ -828,11 +897,23 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-                {/* NEW FIELDS for Alumni Interaction */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Alumni Interaction Details</div>
+          {/* ──────────── Alumni Interaction ──────────── */}
+          <AccordionItem value="alumni-interaction">
+            <AccordionTrigger className="text-lg font-semibold">Alumni Interaction</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Alumni Interaction</CardTitle>
+                  <CardDescription>
+                    Details about alumni interacting with current students
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="alumni_name">Alumni Name:</Label>
                     <Input
@@ -869,551 +950,548 @@ export default function NewsletterFormComponent({
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-          {/* --------------------- Research Work Tab --------------------- */}
-          <TabsContent value="research">
-            <Card>
-              <CardHeader>
-                <CardTitle>Research Work</CardTitle>
-                <CardDescription>
-                  Enter details about research proposals and activities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Research fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="research_title">Research Title:</Label>
-                    <Input
-                      id="research_title"
-                      name="research_title"
-                      value={formData.research_title || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
+          {/* ──────────── Research Work ──────────── */}
+          <AccordionItem value="research-work">
+            <AccordionTrigger className="text-lg font-semibold">Research Work</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Research Work</CardTitle>
+                  <CardDescription>
+                    Enter details about research proposals and activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="research_title">Research Title:</Label>
+                      <Input
+                        id="research_title"
+                        name="research_title"
+                        value={formData.research_title || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_organization">Organization:</Label>
+                      <Input
+                        id="research_organization"
+                        name="research_organization"
+                        value={formData.research_organization || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_date">Date:</Label>
+                      <Input
+                        id="research_date"
+                        name="research_date"
+                        type="date"
+                        value={formData.research_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_cost">Total Cost:</Label>
+                      <Input
+                        id="research_cost"
+                        name="research_cost"
+                        type="number"
+                        value={formData.research_cost || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="research_organization">Organization:</Label>
-                    <Input
-                      id="research_organization"
-                      name="research_organization"
-                      value={formData.research_organization || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_date">Date:</Label>
-                    <Input
-                      id="research_date"
-                      name="research_date"
-                      type="date"
-                      value={formData.research_date || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_cost">Total Cost:</Label>
-                    <Input
-                      id="research_cost"
-                      name="research_cost"
-                      type="number"
-                      value={formData.research_cost || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="research_proposals_submitted">
-                    Research Proposals Submitted:
-                  </Label>
-                  <Textarea
-                    id="research_proposals_submitted"
-                    name="research_proposals_submitted"
-                    value={formData.research_proposals_submitted || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="research_proposals_granted">
-                    Research Proposals Granted:
-                  </Label>
-                  <Textarea
-                    id="research_proposals_granted"
-                    name="research_proposals_granted"
-                    value={formData.research_proposals_granted || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="research_center_activities">
-                    Research Centre Activities:
-                  </Label>
-                  <Textarea
-                    id="research_center_activities"
-                    name="research_center_activities"
-                    value={formData.research_center_activities || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                {/* NEW FIELDS for Research */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Additional Research Details</div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_funding_organization">Funding Organization:</Label>
-                    <Input
-                      id="research_funding_organization"
-                      name="research_funding_organization"
-                      value={formData.research_funding_organization || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_approval_date">Approval Date:</Label>
-                    <Input
-                      id="research_approval_date"
-                      name="research_approval_date"
-                      type="date"
-                      value={formData.research_approval_date || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Collaborative Research</div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_collaborative_partner">Partner Institution:</Label>
-                    <Input
-                      id="research_collaborative_partner"
-                      name="research_collaborative_partner"
-                      value={formData.research_collaborative_partner || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_collaboration_duration">Collaboration Duration:</Label>
-                    <Input
-                      id="research_collaboration_duration"
-                      name="research_collaboration_duration"
-                      value={formData.research_collaboration_duration || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="research_collaboration_outcomes">Key Outcomes:</Label>
+                    <Label htmlFor="research_proposals_submitted">
+                      Research Proposals Submitted:
+                    </Label>
                     <Textarea
-                      id="research_collaboration_outcomes"
-                      name="research_collaboration_outcomes"
-                      value={formData.research_collaboration_outcomes || ""}
+                      id="research_proposals_submitted"
+                      name="research_proposals_submitted"
+                      value={formData.research_proposals_submitted || ""}
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* --------------------- Summary Sheet Tab --------------------- */}
-          <TabsContent value="summary">
-            <Card>
-              <CardHeader>
-                <CardTitle>Summary Sheet</CardTitle>
-                <CardDescription>
-                  Enter summary details for faculty and student activities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Existing Summary fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="conference_published">
-                      Conference Papers Published:
+                    <Label htmlFor="research_proposals_granted">
+                      Research Proposals Granted:
                     </Label>
-                    <Input
-                      id="conference_published"
-                      name="conference_published"
-                      type="number"
-                      value={formData.conference_published || ""}
+                    <Textarea
+                      id="research_proposals_granted"
+                      name="research_proposals_granted"
+                      value={formData.research_proposals_granted || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="journal_published">
-                      Journal Papers Published:
+                    <Label htmlFor="research_center_activities">
+                      Research Centre Activities:
                     </Label>
-                    <Input
-                      id="journal_published"
-                      name="journal_published"
-                      type="number"
-                      value={formData.journal_published || ""}
+                    <Textarea
+                      id="research_center_activities"
+                      name="research_center_activities"
+                      value={formData.research_center_activities || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="books_published">Books Published:</Label>
-                    <Input
-                      id="books_published"
-                      name="books_published"
-                      type="number"
-                      value={formData.books_published || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
+                  {/* Additional Research Details */}
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="font-semibold text-lg">Additional Research Details</div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_funding_organization">Funding Organization:</Label>
+                      <Input
+                        id="research_funding_organization"
+                        name="research_funding_organization"
+                        value={formData.research_funding_organization || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_approval_date">Approval Date:</Label>
+                      <Input
+                        id="research_approval_date"
+                        name="research_approval_date"
+                        type="date"
+                        value={formData.research_approval_date || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  {/* Collaborative Research */}
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="font-semibold text-lg">Collaborative Research</div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_collaborative_partner">
+                        Partner Institution:
+                      </Label>
+                      <Input
+                        id="research_collaborative_partner"
+                        name="research_collaborative_partner"
+                        value={formData.research_collaborative_partner || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_collaboration_duration">
+                        Collaboration Duration:
+                      </Label>
+                      <Input
+                        id="research_collaboration_duration"
+                        name="research_collaboration_duration"
+                        value={formData.research_collaboration_duration || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="research_collaboration_outcomes">Key Outcomes:</Label>
+                      <Textarea
+                        id="research_collaboration_outcomes"
+                        name="research_collaboration_outcomes"
+                        value={formData.research_collaboration_outcomes || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* ──────────── Summary Sheet ──────────── */}
+          <AccordionItem value="summary">
+            <AccordionTrigger className="text-lg font-semibold">Summary Sheet</AccordionTrigger>
+            <AccordionContent>
+              <Card className="mt-2">
+                <CardHeader>
+                  <CardTitle>Summary Sheet</CardTitle>
+                  <CardDescription>
+                    Enter summary details for faculty and student activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="conference_published">
+                        Conference Papers Published:
+                      </Label>
+                      <Input
+                        id="conference_published"
+                        name="conference_published"
+                        type="number"
+                        value={formData.conference_published || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="journal_published">
+                        Journal Papers Published:
+                      </Label>
+                      <Input
+                        id="journal_published"
+                        name="journal_published"
+                        type="number"
+                        value={formData.journal_published || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="books_published">Books Published:</Label>
+                      <Input
+                        id="books_published"
+                        name="books_published"
+                        type="number"
+                        value={formData.books_published || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fdps_attended">FDPs/STTP Attended:</Label>
+                      <Input
+                        id="fdps_attended"
+                        name="fdps_attended"
+                        type="number"
+                        value={formData.fdps_attended || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="moocs_completed">MooCs Completed:</Label>
+                      <Input
+                        id="moocs_completed"
+                        name="moocs_completed"
+                        type="number"
+                        value={formData.moocs_completed || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nptel_completed">NPTEL Courses Completed:</Label>
+                      <Input
+                        id="nptel_completed"
+                        name="nptel_completed"
+                        type="number"
+                        value={formData.nptel_completed || ""}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fdps_attended">FDPs/STTP Attended:</Label>
-                    <Input
-                      id="fdps_attended"
-                      name="fdps_attended"
-                      type="number"
-                      value={formData.fdps_attended || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="moocs_completed">MooCs Completed:</Label>
-                    <Input
-                      id="moocs_completed"
-                      name="moocs_completed"
-                      type="number"
-                      value={formData.moocs_completed || ""}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nptel_completed">
-                      NPTEL Courses Completed:
+                    <Label htmlFor="other_initiatives">
+                      Other Initiatives by the Department:
                     </Label>
-                    <Input
-                      id="nptel_completed"
-                      name="nptel_completed"
-                      type="number"
-                      value={formData.nptel_completed || ""}
+                    <Textarea
+                      id="other_initiatives"
+                      name="other_initiatives"
+                      value={formData.other_initiatives || ""}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="other_initiatives">
-                    Other Initiatives by the Department:
-                  </Label>
-                  <Textarea
-                    id="other_initiatives"
-                    name="other_initiatives"
-                    value={formData.other_initiatives || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="student_achievements">
-                    Student Achievements:
-                  </Label>
-                  <Textarea
-                    id="student_achievements"
-                    name="student_achievements"
-                    value={formData.student_achievements || ""}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                {/* ---------- Additional Faculty Summary Fields ---------- */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Faculty Summary</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_books_chapters">
-                        Book Chapters Published:
-                      </Label>
-                      <Input
-                        id="faculty_books_chapters"
-                        name="faculty_books_chapters"
-                        type="number"
-                        value={formData.faculty_books_chapters || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_collaborative_research">
-                        Collaborative Research Count:
-                      </Label>
-                      <Input
-                        id="faculty_collaborative_research"
-                        name="faculty_collaborative_research"
-                        type="number"
-                        value={formData.faculty_collaborative_research || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_expert_talks">
-                        Expert Talks Organized:
-                      </Label>
-                      <Input
-                        id="faculty_expert_talks"
-                        name="faculty_expert_talks"
-                        type="number"
-                        value={formData.faculty_expert_talks || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_alumni_talks">
-                        Alumni Talks Organized:
-                      </Label>
-                      <Input
-                        id="faculty_alumni_talks"
-                        name="faculty_alumni_talks"
-                        type="number"
-                        value={formData.faculty_alumni_talks || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_industrial_visits">
-                        Industrial Visits Organized:
-                      </Label>
-                      <Input
-                        id="faculty_industrial_visits"
-                        name="faculty_industrial_visits"
-                        type="number"
-                        value={formData.faculty_industrial_visits || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_mous_operational">
-                        MoUs Currently Operational:
-                      </Label>
-                      <Input
-                        id="faculty_mous_operational"
-                        name="faculty_mous_operational"
-                        type="number"
-                        value={formData.faculty_mous_operational || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_consultancy_completed">
-                        Consultancy Work Completed:
-                      </Label>
-                      <Input
-                        id="faculty_consultancy_completed"
-                        name="faculty_consultancy_completed"
-                        type="number"
-                        value={formData.faculty_consultancy_completed || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_edp_completed">
-                        EDP Completed:
-                      </Label>
-                      <Input
-                        id="faculty_edp_completed"
-                        name="faculty_edp_completed"
-                        type="number"
-                        value={formData.faculty_edp_completed || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="faculty_talks_delivered">
-                        Talks Delivered by Faculty:
-                      </Label>
-                      <Input
-                        id="faculty_talks_delivered"
-                        name="faculty_talks_delivered"
-                        type="number"
-                        value={formData.faculty_talks_delivered || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* ---------- Additional Student Summary Fields ---------- */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Student Summary</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="student_conference_papers">
-                        Conference Papers Published (Students):
-                      </Label>
-                      <Input
-                        id="student_conference_papers"
-                        name="student_conference_papers"
-                        type="number"
-                        value={formData.student_conference_papers || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="student_journal_papers">
-                        Journal Papers Published (Students):
-                      </Label>
-                      <Input
-                        id="student_journal_papers"
-                        name="student_journal_papers"
-                        type="number"
-                        value={formData.student_journal_papers || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="student_conferences_attended">
-                        No. of Students Attended Conference (NIT/IIT/IIIT):
-                      </Label>
-                      <Input
-                        id="student_conferences_attended"
-                        name="student_conferences_attended"
-                        type="number"
-                        value={formData.student_conferences_attended || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="student_hackathons">
-                        No. of Students Attended Hackathons:
-                      </Label>
-                      <Input
-                        id="student_hackathons"
-                        name="student_hackathons"
-                        type="number"
-                        value={formData.student_hackathons || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="student_moocs_completed">
-                        MooCs Completed (Students):
-                      </Label>
-                      <Input
-                        id="student_moocs_completed"
-                        name="student_moocs_completed"
-                        type="number"
-                        value={formData.student_moocs_completed || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="student_nptel_completed">
-                        NPTEL Courses Completed (Students):
-                      </Label>
-                      <Input
-                        id="student_nptel_completed"
-                        name="student_nptel_completed"
-                        type="number"
-                        value={formData.student_nptel_completed || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="pt-4">
-                    <Label htmlFor="student_aicte_participation">
-                      No. of Students Participated in AICTE Activities:
+                  <div className="space-y-2">
+                    <Label htmlFor="student_achievements">
+                      Student Achievements:
                     </Label>
-                    <Input
-                      id="student_aicte_participation"
-                      name="student_aicte_participation"
-                      type="number"
-                      value={formData.student_aicte_participation || ""}
+                    <Textarea
+                      id="student_achievements"
+                      name="student_achievements"
+                      value={formData.student_achievements || ""}
                       onChange={handleInputChange}
                     />
                   </div>
-                </div>
 
-                {/* ---------- Other Departmental Activities ---------- */}
-                <div className="pt-4 border-t border-gray-300">
-                  <div className="font-semibold text-lg">Other Activities</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="sports_events_count">
-                        Sports Events Count:
-                      </Label>
-                      <Input
-                        id="sports_events_count"
-                        name="sports_events_count"
-                        type="number"
-                        value={formData.sports_events_count || ""}
-                        onChange={handleInputChange}
-                      />
+                  {/* ---------- Additional Faculty Summary Fields ---------- */}
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="font-semibold text-lg">Faculty Summary</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_books_chapters">
+                          Book Chapters Published:
+                        </Label>
+                        <Input
+                          id="faculty_books_chapters"
+                          name="faculty_books_chapters"
+                          type="number"
+                          value={formData.faculty_books_chapters || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_collaborative_research">
+                          Collaborative Research Count:
+                        </Label>
+                        <Input
+                          id="faculty_collaborative_research"
+                          name="faculty_collaborative_research"
+                          type="number"
+                          value={formData.faculty_collaborative_research || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_expert_talks">
+                          Expert Talks Organized:
+                        </Label>
+                        <Input
+                          id="faculty_expert_talks"
+                          name="faculty_expert_talks"
+                          type="number"
+                          value={formData.faculty_expert_talks || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="placement_companies">
-                        Placement Activities (Companies Count):
-                      </Label>
-                      <Input
-                        id="placement_companies"
-                        name="placement_companies"
-                        type="number"
-                        value={formData.placement_companies || ""}
-                        onChange={handleInputChange}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_alumni_talks">
+                          Alumni Talks Organized:
+                        </Label>
+                        <Input
+                          id="faculty_alumni_talks"
+                          name="faculty_alumni_talks"
+                          type="number"
+                          value={formData.faculty_alumni_talks || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_industrial_visits">
+                          Industrial Visits Organized:
+                        </Label>
+                        <Input
+                          id="faculty_industrial_visits"
+                          name="faculty_industrial_visits"
+                          type="number"
+                          value={formData.faculty_industrial_visits || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_mous_operational">
+                          MoUs Currently Operational:
+                        </Label>
+                        <Input
+                          id="faculty_mous_operational"
+                          name="faculty_mous_operational"
+                          type="number"
+                          value={formData.faculty_mous_operational || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="placement_ctc">
-                        Package Details (CTC in LPA):
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_consultancy_completed">
+                          Consultancy Work Completed:
+                        </Label>
+                        <Input
+                          id="faculty_consultancy_completed"
+                          name="faculty_consultancy_completed"
+                          type="number"
+                          value={formData.faculty_consultancy_completed || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_edp_completed">
+                          EDP Completed:
+                        </Label>
+                        <Input
+                          id="faculty_edp_completed"
+                          name="faculty_edp_completed"
+                          type="number"
+                          value={formData.faculty_edp_completed || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="faculty_talks_delivered">
+                          Talks Delivered by Faculty:
+                        </Label>
+                        <Input
+                          id="faculty_talks_delivered"
+                          name="faculty_talks_delivered"
+                          type="number"
+                          value={formData.faculty_talks_delivered || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ---------- Additional Student Summary Fields ---------- */}
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="font-semibold text-lg">Student Summary</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="student_conference_papers">
+                          Conference Papers Published (Students):
+                        </Label>
+                        <Input
+                          id="student_conference_papers"
+                          name="student_conference_papers"
+                          type="number"
+                          value={formData.student_conference_papers || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_journal_papers">
+                          Journal Papers Published (Students):
+                        </Label>
+                        <Input
+                          id="student_journal_papers"
+                          name="student_journal_papers"
+                          type="number"
+                          value={formData.student_journal_papers || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_conferences_attended">
+                          No. of Students Attended Conf. (NIT/IIT/IIIT):
+                        </Label>
+                        <Input
+                          id="student_conferences_attended"
+                          name="student_conferences_attended"
+                          type="number"
+                          value={formData.student_conferences_attended || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="student_hackathons">
+                          No. of Students Attended Hackathons:
+                        </Label>
+                        <Input
+                          id="student_hackathons"
+                          name="student_hackathons"
+                          type="number"
+                          value={formData.student_hackathons || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_moocs_completed">
+                          MooCs Completed (Students):
+                        </Label>
+                        <Input
+                          id="student_moocs_completed"
+                          name="student_moocs_completed"
+                          type="number"
+                          value={formData.student_moocs_completed || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_nptel_completed">
+                          NPTEL Courses Completed (Students):
+                        </Label>
+                        <Input
+                          id="student_nptel_completed"
+                          name="student_nptel_completed"
+                          type="number"
+                          value={formData.student_nptel_completed || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-4">
+                      <Label htmlFor="student_aicte_participation">
+                        No. of Students Participated in AICTE Activities:
                       </Label>
                       <Input
-                        id="placement_ctc"
-                        name="placement_ctc"
-                        value={formData.placement_ctc || ""}
+                        id="student_aicte_participation"
+                        name="student_aicte_participation"
+                        type="number"
+                        value={formData.student_aicte_participation || ""}
                         onChange={handleInputChange}
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="hec_events_count">
-                        HEC Events Count:
-                      </Label>
-                      <Input
-                        id="hec_events_count"
-                        name="hec_events_count"
-                        type="number"
-                        value={formData.hec_events_count || ""}
-                        onChange={handleInputChange}
-                      />
+
+                  {/* ---------- Other Departmental Activities ---------- */}
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="font-semibold text-lg">Other Activities</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="sports_events_count">
+                          Sports Events Count:
+                        </Label>
+                        <Input
+                          id="sports_events_count"
+                          name="sports_events_count"
+                          type="number"
+                          value={formData.sports_events_count || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="placement_companies">
+                          Placement Activities (Companies Count):
+                        </Label>
+                        <Input
+                          id="placement_companies"
+                          name="placement_companies"
+                          type="number"
+                          value={formData.placement_companies || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="placement_ctc">
+                          Package Details (CTC in LPA):
+                        </Label>
+                        <Input
+                          id="placement_ctc"
+                          name="placement_ctc"
+                          value={formData.placement_ctc || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ncc_bicep_events_count">
-                        NCC/BICEP Activities Count:
-                      </Label>
-                      <Input
-                        id="ncc_bicep_events_count"
-                        name="ncc_bicep_events_count"
-                        type="number"
-                        value={formData.ncc_bicep_events_count || ""}
-                        onChange={handleInputChange}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="hec_events_count">
+                          HEC Events Count:
+                        </Label>
+                        <Input
+                          id="hec_events_count"
+                          name="hec_events_count"
+                          type="number"
+                          value={formData.hec_events_count || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ncc_bicep_events_count">
+                          NCC/BICEP Activities Count:
+                        </Label>
+                        <Input
+                          id="ncc_bicep_events_count"
+                          name="ncc_bicep_events_count"
+                          type="number"
+                          value={formData.ncc_bicep_events_count || ""}
+                          onChange={handleInputChange}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>  
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
 
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        </Accordion>
 
-        <div className="flex justify-end">
+        {/* ------------------ Submit Button & Messages ------------------ */}
+        <div className="flex justify-end mt-8">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Submitting...' : 'Submit Newsletter Content'}
           </Button>
